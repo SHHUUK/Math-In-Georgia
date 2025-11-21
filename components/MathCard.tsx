@@ -1,0 +1,178 @@
+import React, { useState } from 'react';
+import { Copy, Check, BookOpen, ArrowRight, Wand2, Loader2 } from 'lucide-react';
+import { MathSubTopic } from '../types';
+import { generateMathIllustration } from '../services/geminiService';
+
+interface MathCardProps {
+  topic: MathSubTopic;
+  onClick?: () => void;
+}
+
+const formatMathToUnicode = (text: string) => {
+  if (!text) return '';
+
+  // Superscript mapping
+  const superscripts: Record<string, string> = {
+    '0': '⁰', '1': '¹', '2': '²', '3': '³', '4': '⁴',
+    '5': '⁵', '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹',
+    'n': 'ⁿ', 'x': 'ˣ', 'y': 'ʸ', '+': '⁺', '-': '⁻',
+    '(': '⁽', ')': '⁾'
+  };
+
+  return text
+    // Common symbols
+    .replace(/\bsqrt\b/gi, '√')
+    .replace(/\bpi\b/gi, 'π')
+    .replace(/\bdelta\b/gi, 'Δ')
+    .replace(/\btheta\b/gi, 'θ')
+    .replace(/\binfinity\b/gi, '∞')
+    .replace(/!=/g, '≠')
+    .replace(/<=/g, '≤')
+    .replace(/>=/g, '≥')
+    .replace(/->/g, '→')
+    .replace(/\*/g, '·')
+    // Fractions and Special Powers
+    .replace(/\^1\/2/g, '½')
+    .replace(/\^1\/3/g, '⅓')
+    // Generic Superscript replacer for ^2, ^n, ^(n+1)
+    .replace(/\^([0-9nxy+\-()]+)/g, (_, char) => {
+      return char.split('').map((c: string) => superscripts[c] || c).join('');
+    });
+};
+
+export const MathCard: React.FC<MathCardProps> = ({ topic, onClick }) => {
+  const [copied, setCopied] = useState(false);
+  const [imageError, setImageError] = useState(false);
+  const [generatedImage, setGeneratedImage] = useState<string | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  const handleCopy = async (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent card click when copying
+    if (topic.formula) {
+      try {
+        await navigator.clipboard.writeText(topic.formula);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      } catch (err) {
+        console.error('Failed to copy text: ', err);
+      }
+    }
+  };
+
+  const handleGenerateImage = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsGenerating(true);
+    const img = await generateMathIllustration(topic.title, topic.explanation);
+    if (img) {
+      setGeneratedImage(img);
+      setImageError(false);
+    }
+    setIsGenerating(false);
+  };
+
+  // Reliable placeholder gradients based on topic ID hash or simple rotation
+  const gradients = [
+    'from-blue-400 to-indigo-600',
+    'from-emerald-400 to-teal-600',
+    'from-orange-400 to-pink-600',
+    'from-purple-400 to-violet-600',
+  ];
+  const gradientClass = gradients[topic.title.length % gradients.length];
+
+  // Determine what image to show: Generated > Provided URL > Fallback
+  const showImage = generatedImage || (!imageError && topic.imageUrl);
+
+  // Prepare the formula text
+  const rawFormula = topic.formula ? topic.formula.split('\n')[0] + (topic.formula.includes('\n') ? '\n...' : '') : '';
+  const displayFormula = formatMathToUnicode(rawFormula);
+
+  return (
+    <div 
+      onClick={onClick}
+      className={`bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden 
+        hover:shadow-xl hover:shadow-indigo-500/10 hover:-translate-y-1 hover:scale-[1.02] hover:border-indigo-300 
+        transition-all duration-300 ease-in-out flex flex-col group h-full 
+        ${onClick ? 'cursor-pointer' : ''}`}
+    >
+      <div className={`h-48 overflow-hidden relative ${!showImage ? `bg-gradient-to-br ${gradientClass}` : 'bg-indigo-50'}`}>
+        {showImage ? (
+          <img 
+            src={showImage} 
+            alt={topic.title}
+            className="w-full h-full object-cover opacity-90 group-hover:opacity-100 group-hover:scale-110 transition-all duration-700 ease-out"
+            loading="lazy"
+            onError={() => setImageError(true)}
+          />
+        ) : (
+          <div className="w-full h-full flex flex-col items-center justify-center opacity-30 text-white p-4 text-center gap-2">
+             <BookOpen size={48} />
+             <span className="text-sm font-medium opacity-80">ფოტო მიუწვდომელია</span>
+          </div>
+        )}
+
+        {/* Image Overlay Gradient & Title */}
+        <div className="absolute inset-0 bg-gradient-to-t from-indigo-900/90 via-indigo-900/30 to-transparent flex items-end pointer-events-none">
+          <div className="p-5 w-full">
+            <h3 className="text-white font-bold text-xl drop-shadow-md tracking-wide transform group-hover:translate-x-1 transition-transform duration-300">{topic.title}</h3>
+          </div>
+        </div>
+
+        {/* Generation Button - Shows if no image or on hover if image exists to allow regeneration */}
+        <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-20">
+           <button 
+             onClick={handleGenerateImage}
+             disabled={isGenerating}
+             className="p-2 bg-black/30 hover:bg-black/50 backdrop-blur-md border border-white/20 rounded-full text-white transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+             title="AI ილუსტრაციის გენერირება"
+           >
+             {isGenerating ? <Loader2 size={16} className="animate-spin" /> : <Wand2 size={16} />}
+           </button>
+        </div>
+
+        {/* Explicit Generate Button if Image Missing */}
+        {!showImage && !isGenerating && (
+          <div className="absolute inset-0 flex items-center justify-center z-10">
+            <button
+              onClick={handleGenerateImage}
+              className="flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm border border-white/40 rounded-full text-white font-semibold shadow-lg transition-all transform hover:scale-105"
+            >
+              <Wand2 size={16} />
+              <span>ილუსტრაციის შექმნა</span>
+            </button>
+          </div>
+        )}
+      </div>
+      
+      <div className="p-6 flex-1 flex flex-col gap-4">
+        {topic.formula && (
+          <div className="relative group/formula">
+            <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 group-hover:border-indigo-200 group-hover:shadow-sm transition-all duration-300 font-mono text-indigo-800 text-sm md:text-base overflow-x-auto math-formula shadow-inner pr-10">
+              <pre className="whitespace-pre-wrap font-bold font-mono font-feature-settings-tnum">{displayFormula}</pre>
+            </div>
+            <button
+              onClick={handleCopy}
+              className="absolute top-2 right-2 p-1.5 bg-white/90 backdrop-blur-sm border border-slate-200 rounded-lg text-slate-500 hover:text-indigo-600 hover:border-indigo-300 shadow-sm opacity-0 group-hover/formula:opacity-100 transition-all duration-200 focus:opacity-100 focus:outline-none z-10"
+              title="ფორმულის კოპირება"
+            >
+              {copied ? <Check size={14} className="text-green-500" /> : <Copy size={14} />}
+            </button>
+          </div>
+        )}
+        
+        <div className="prose prose-sm prose-slate text-slate-600 leading-relaxed flex-1">
+          <p className="line-clamp-3">{topic.explanation}</p>
+        </div>
+
+        {onClick && (
+          <div className="pt-2 mt-auto flex items-center justify-between text-indigo-600 font-semibold text-sm group-hover:text-indigo-700 transition-colors">
+            <div className="flex items-center">
+              <BookOpen size={16} className="mr-2" />
+              სრულად ნახვა
+            </div>
+            <ArrowRight size={16} className="transform translate-x-0 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all duration-300" />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};

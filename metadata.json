@@ -1,0 +1,8 @@
+{
+  "name": "MathMaster AI - Feynman Edition",
+  "description": "A comprehensive mathematics study companion featuring a beautifully formatted synopsis of formulas explained via the Feynman technique, powered by Gemini AI for interactive learning and image analysis.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}
