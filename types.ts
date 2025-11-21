@@ -39,7 +39,9 @@ export enum AppView {
   VISION = 'vision',
   QUIZ = 'quiz',
   BOARD = 'board',
-  CALCULATOR = 'calculator'
+  CALCULATOR = 'calculator',
+  MOBILE_CONNECT = 'mobile_connect',
+  NATIONAL_EXAM = 'national_exam'
 }
 
 export interface QuizQuestion {
@@ -48,4 +50,37 @@ export interface QuizQuestion {
   options: string[];
   correctAnswerIndex: number;
   explanation: string;
+  hint?: string; // Added hint field
+}
+
+export interface QuizResult {
+  id: string;
+  topic: string;
+  score: number;
+  total: number;
+  date: string;
+}
+
+export type QuestionType = 'mc' | 'open';
+
+export interface ExamQuestion {
+  id: number;
+  text: string;
+  type: QuestionType;
+  points: number;
+  options?: string[]; // For MC
+  correctAnswer?: string; // For MC (index or text)
+  rubric?: string; // For AI grading guidance on Open questions
+}
+
+export interface ExamResult {
+  totalScore: number;
+  maxScore: number;
+  details: {
+    questionId: number;
+    userAnswer: string;
+    score: number;
+    maxPoints: number;
+    feedback?: string;
+  }[];
 }

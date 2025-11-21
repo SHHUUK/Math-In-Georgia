@@ -120,7 +120,7 @@ export const mathTopics: MathTopic[] = [
             '(-3) · (-3) · (-3) = -27, ამიტომ ³√-27 = -3'
           ]
         },
-        imageUrl: 'https://images.unsplash.com/photo-1635070041078-e363dbe005cb?auto=format&fit=crop&w=800&q=80'
+        imageUrl: 'https://images.unsplash.com/photo-1470104240373-bc1812eddc9f?auto=format&fit=crop&w=800&q=80'
       },
       {
         id: 'root_properties',
@@ -140,7 +140,7 @@ export const mathTopics: MathTopic[] = [
             '√36 არის 6, ამიტომ პასუხია 6√2'
           ]
         },
-        imageUrl: 'https://images.unsplash.com/photo-1518133910546-b6c2fb7d79e3?auto=format&fit=crop&w=800&q=80'
+        imageUrl: 'https://images.unsplash.com/photo-1592496001020-d31b7960f1c5?auto=format&fit=crop&w=800&q=80'
       },
       {
         id: 'rational_roots',
@@ -160,7 +160,7 @@ export const mathTopics: MathTopic[] = [
             'პასუხი: 4'
           ]
         },
-        imageUrl: 'https://images.unsplash.com/photo-1628155930542-41314a8849ec?auto=format&fit=crop&w=800&q=80'
+        imageUrl: 'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?auto=format&fit=crop&w=800&q=80'
       },
       {
         id: 'root_arithmetic',
@@ -179,7 +179,7 @@ export const mathTopics: MathTopic[] = [
             '4. (0.5 + 3)√2 = 3.5√2 ან 7√2/2'
           ]
         },
-        imageUrl: 'https://images.unsplash.com/photo-1509869175650-a1d97972541a?auto=format&fit=crop&w=800&q=80'
+        imageUrl: 'https://images.unsplash.com/photo-1581093571730-5629c9e5d3a5?auto=format&fit=crop&w=800&q=80'
       }
     ]
   },
@@ -315,7 +315,7 @@ export const mathTopics: MathTopic[] = [
             'არ დაგავიწყდეს + C'
           ]
         },
-        imageUrl: 'https://images.unsplash.com/photo-1635070041078-e363dbe005cb?auto=format&fit=crop&w=800&q=80'
+        imageUrl: 'https://images.unsplash.com/photo-1509228468518-180dd4864904?auto=format&fit=crop&w=800&q=80'
       }
     ]
   },

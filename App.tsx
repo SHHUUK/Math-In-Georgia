@@ -1,11 +1,11 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   BookOpen, MessageCircle, Camera, Menu, X, 
   Calculator as CalculatorIcon, Layers, Triangle, Grid, Activity, 
   TrendingUp, ArrowUpRight, List, BarChart, Zap,
   Infinity as InfinityIcon, ArrowLeft, ChevronRight, Lightbulb, Brain, PenTool,
-  Divide, ClipboardList, Presentation
+  Divide, ClipboardList, Presentation, Smartphone, FileText
 } from 'lucide-react';
 import { AppView, MathSubTopic } from './types';
 import { mathTopics } from './data/mathContent';
@@ -15,6 +15,8 @@ import { ImageAnalyzer } from './components/ImageAnalyzer';
 import { QuizInterface } from './components/QuizInterface';
 import { Whiteboard } from './components/Whiteboard';
 import { Calculator } from './components/Calculator';
+import { MobileConnect } from './components/MobileConnect';
+import { NationalExam } from './components/NationalExam';
 
 const iconMap: Record<string, React.ElementType> = {
   Calculator: CalculatorIcon, Layers, Triangle, Grid, Activity,
@@ -27,6 +29,9 @@ const App: React.FC = () => {
   const [selectedTopicId, setSelectedTopicId] = useState<string | null>(null);
   const [selectedSubTopicId, setSelectedSubTopicId] = useState<string | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  
+  // Shared State for Mobile Connect Simulation
+  const [mobileImage, setMobileImage] = useState<string | null>(null);
 
   const toggleMobileMenu = () => setIsMobileMenuOpen(!isMobileMenuOpen);
 
@@ -34,6 +39,12 @@ const App: React.FC = () => {
   const handleViewChange = (view: AppView) => {
     setCurrentView(view);
     setIsMobileMenuOpen(false);
+  };
+
+  // Handle simulation of mobile upload
+  const handleMobileScan = (imageUrl: string) => {
+    setMobileImage(imageUrl);
+    setCurrentView(AppView.VISION);
   };
 
   // Navigation helpers
@@ -242,14 +253,14 @@ const App: React.FC = () => {
   const NavItem = ({ view, icon: Icon, label }: { view: AppView, icon: any, label: string }) => (
     <button
       onClick={() => handleViewChange(view)}
-      className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all w-full md:w-auto ${
+      className={`flex items-center gap-2 px-4 py-3 rounded-xl transition-all w-full md:w-auto ${
         currentView === view
           ? 'bg-indigo-100 text-indigo-700 font-bold'
           : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
       }`}
     >
-      <Icon size={20} />
-      <span>{label}</span>
+      <Icon size={20} className="shrink-0" />
+      <span className="truncate text-sm font-medium">{label}</span>
     </button>
   );
 
@@ -284,14 +295,16 @@ const App: React.FC = () => {
             </div>
           </div>
 
-          <nav className="space-y-2 flex-1">
-            <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 px-4">მენიუ</div>
+          <nav className="space-y-1 flex-1">
+            <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 px-4">მენიუ</div>
             <NavItem view={AppView.SYNOPSIS} icon={BookOpen} label="კონსპექტი" />
             <NavItem view={AppView.CHAT} icon={MessageCircle} label="AI ჩატი" />
             <NavItem view={AppView.VISION} icon={Camera} label="ვიზუალური ანალიზი" />
             <NavItem view={AppView.QUIZ} icon={ClipboardList} label="ტესტირება" />
+            <NavItem view={AppView.NATIONAL_EXAM} icon={FileText} label="ეროვნული გამოცდები" />
             <NavItem view={AppView.BOARD} icon={Presentation} label="სამუშაო დაფა" />
             <NavItem view={AppView.CALCULATOR} icon={CalculatorIcon} label="კალკულატორი" />
+            <NavItem view={AppView.MOBILE_CONNECT} icon={Smartphone} label="Mobile Connect" />
           </nav>
 
           <div className="mt-auto pt-6 border-t border-slate-100">
@@ -340,6 +353,8 @@ const App: React.FC = () => {
             {currentView === AppView.CHAT && <ChatInterface />}
             {currentView === AppView.VISION && <ImageAnalyzer />}
             {currentView === AppView.QUIZ && <QuizInterface />}
+            {currentView === AppView.NATIONAL_EXAM && <NationalExam />}
+            {currentView === AppView.MOBILE_CONNECT && <MobileConnect onSimulateScan={handleMobileScan} />}
           </div>
         </div>
       </main>

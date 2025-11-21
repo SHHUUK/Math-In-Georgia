@@ -1,12 +1,16 @@
+
+
 import React, { useState, useRef } from 'react';
-import { Upload, Image as ImageIcon, X, Loader2, CheckCircle, Bot } from 'lucide-react';
-import { analyzeImageWithGemini } from '../services/geminiService';
+import { Upload, Image as ImageIcon, X, Loader2, CheckCircle, Bot, RefreshCcw, Lightbulb } from 'lucide-react';
+import { analyzeImageWithGemini, generateSimilarProblem } from '../services/geminiService';
 
 export const ImageAnalyzer: React.FC = () => {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [mimeType, setMimeType] = useState<string>('');
   const [analysis, setAnalysis] = useState<string | null>(null);
+  const [practiceProblem, setPracticeProblem] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isGeneratingPractice, setIsGeneratingPractice] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -20,6 +24,7 @@ export const ImageAnalyzer: React.FC = () => {
         setSelectedImage(result);
         setMimeType(file.type);
         setAnalysis(null);
+        setPracticeProblem(null);
       };
       reader.readAsDataURL(file);
     }
@@ -32,6 +37,7 @@ export const ImageAnalyzer: React.FC = () => {
   const clearImage = () => {
     setSelectedImage(null);
     setAnalysis(null);
+    setPracticeProblem(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -41,12 +47,21 @@ export const ImageAnalyzer: React.FC = () => {
     if (!selectedImage || !mimeType) return;
 
     setIsLoading(true);
+    setPracticeProblem(null);
     // Extract clean base64 string
     const base64Data = selectedImage.split(',')[1];
     
     const result = await analyzeImageWithGemini(base64Data, mimeType);
     setAnalysis(result);
     setIsLoading(false);
+  };
+
+  const handleGeneratePractice = async () => {
+    if (!analysis) return;
+    setIsGeneratingPractice(true);
+    const problem = await generateSimilarProblem(analysis);
+    setPracticeProblem(problem);
+    setIsGeneratingPractice(false);
   };
 
   return (
@@ -57,7 +72,7 @@ export const ImageAnalyzer: React.FC = () => {
           ვიზუალური ანალიზი
         </h2>
         <p className="text-indigo-100 max-w-xl">
-          ატვირთეთ მათემატიკური ამოცანის ან ფორმულის ფოტო. Gemini დაგეხმარებათ მის ამოხსნაში და გაანალიზებაში.
+          ატვირთეთ მათემატიკური ამოცანის ან ფორმულის ფოტო. Gemini აგიხსნით მას მარტივად (Feynman მეთოდით).
         </p>
       </div>
 
@@ -132,13 +147,38 @@ export const ImageAnalyzer: React.FC = () => {
         </div>
 
         {/* Result Section */}
-        <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm overflow-y-auto max-h-[600px]">
+        <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm overflow-y-auto max-h-[600px] flex flex-col">
           <h3 className="text-lg font-bold text-slate-800 mb-4 border-b pb-2">
             ანალიზის შედეგი
           </h3>
+          
           {analysis ? (
-            <div className="prose prose-indigo max-w-none">
-               <p className="whitespace-pre-wrap text-slate-700 leading-relaxed">{analysis}</p>
+            <div className="space-y-6">
+               <div className="prose prose-indigo max-w-none">
+                 <p className="whitespace-pre-wrap text-slate-700 leading-relaxed">{analysis}</p>
+               </div>
+
+               {/* Practice Generator Feature */}
+               <div className="mt-6 border-t border-slate-100 pt-6">
+                  {!practiceProblem ? (
+                    <button 
+                      onClick={handleGeneratePractice}
+                      disabled={isGeneratingPractice}
+                      className="w-full py-3 bg-green-50 hover:bg-green-100 border border-green-200 text-green-700 rounded-xl font-semibold transition-all flex items-center justify-center gap-2"
+                    >
+                       {isGeneratingPractice ? <Loader2 className="animate-spin" size={18} /> : <RefreshCcw size={18} />}
+                       მსგავსი მაგალითის გენერირება (სავარჯიშო)
+                    </button>
+                  ) : (
+                    <div className="bg-green-50 p-5 rounded-xl border border-green-200 animate-in fade-in slide-in-from-bottom-4">
+                       <h4 className="font-bold text-green-800 mb-3 flex items-center gap-2">
+                          <Lightbulb size={20} />
+                          ივარჯიშე:
+                       </h4>
+                       <p className="whitespace-pre-wrap text-green-900 font-medium">{practiceProblem}</p>
+                    </div>
+                  )}
+               </div>
             </div>
           ) : (
             <div className="h-full flex flex-col items-center justify-center text-slate-400 space-y-3 min-h-[200px]">

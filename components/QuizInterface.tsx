@@ -1,27 +1,33 @@
 
 import React, { useState } from 'react';
-import { ClipboardList, CheckCircle2, XCircle, Loader2, ArrowRight, RotateCcw, Trophy } from 'lucide-react';
+import { ClipboardList, CheckCircle2, XCircle, Loader2, ArrowRight, RotateCcw, Trophy, History, Clock, Lightbulb } from 'lucide-react';
 import { mathTopics } from '../data/mathContent';
 import { generateQuiz } from '../services/geminiService';
-import { QuizQuestion } from '../types';
+import { QuizQuestion, QuizResult } from '../types';
 
 export const QuizInterface: React.FC = () => {
+  const [viewMode, setViewMode] = useState<'topic_select' | 'quiz' | 'results' | 'history'>('topic_select');
+  
+  // Quiz State
   const [activeTopic, setActiveTopic] = useState<string | null>(null);
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
   const [loading, setLoading] = useState(false);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [score, setScore] = useState(0);
-  const [showResults, setShowResults] = useState(false);
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [isAnswerChecked, setIsAnswerChecked] = useState(false);
+  const [showHint, setShowHint] = useState(false);
+
+  // History State
+  const [quizHistory, setQuizHistory] = useState<QuizResult[]>([]);
 
   const startQuiz = async (topicId: string, topicTitle: string) => {
     setActiveTopic(topicTitle);
     setLoading(true);
+    setViewMode('quiz');
     setQuestions([]);
     setCurrentQuestionIndex(0);
     setScore(0);
-    setShowResults(false);
 
     const generatedQuestions = await generateQuiz(topicTitle);
     setQuestions(generatedQuestions);
@@ -37,6 +43,7 @@ export const QuizInterface: React.FC = () => {
     if (selectedAnswer === null) return;
     
     setIsAnswerChecked(true);
+    setShowHint(false); // Hide hint after checking
     if (selectedAnswer === questions[currentQuestionIndex].correctAnswerIndex) {
       setScore(score + 1);
     }
@@ -47,21 +54,43 @@ export const QuizInterface: React.FC = () => {
       setCurrentQuestionIndex(currentQuestionIndex + 1);
       setSelectedAnswer(null);
       setIsAnswerChecked(false);
+      setShowHint(false);
     } else {
-      setShowResults(true);
+      // Finish Quiz
+      finishQuiz();
     }
   };
 
+  const finishQuiz = () => {
+    setViewMode('results');
+    // Add to history
+    const newResult: QuizResult = {
+      id: Date.now().toString(),
+      topic: activeTopic || 'Unknown',
+      score: score + (selectedAnswer === questions[currentQuestionIndex].correctAnswerIndex ? 1 : 0), // Add last point if correct
+      total: questions.length,
+      date: new Date().toLocaleString('ka-GE', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+    };
+    
+    // Recalculate final score for display consistency
+    const finalScore = newResult.score;
+    setScore(finalScore);
+    
+    setQuizHistory(prev => [newResult, ...prev]);
+  };
+
   const resetQuiz = () => {
+    setViewMode('topic_select');
     setActiveTopic(null);
     setQuestions([]);
-    setShowResults(false);
     setScore(0);
     setCurrentQuestionIndex(0);
     setSelectedAnswer(null);
     setIsAnswerChecked(false);
+    setShowHint(false);
   };
 
+  // --- RENDER: LOADING ---
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center h-full space-y-6 animate-fadeIn">
@@ -77,7 +106,8 @@ export const QuizInterface: React.FC = () => {
     );
   }
 
-  if (showResults) {
+  // --- RENDER: RESULTS ---
+  if (viewMode === 'results') {
     const percentage = Math.round((score / questions.length) * 100);
     
     return (
@@ -101,19 +131,28 @@ export const QuizInterface: React.FC = () => {
             </div>
           </div>
 
-          <button 
-            onClick={resetQuiz}
-            className="flex items-center justify-center gap-2 w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold transition-all shadow-md hover:shadow-lg"
-          >
-            <RotateCcw size={20} />
-            სხვა ტესტის გავლა
-          </button>
+          <div className="flex gap-3">
+             <button 
+              onClick={() => setViewMode('history')}
+              className="flex-1 py-4 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold transition-all"
+            >
+              ისტორია
+            </button>
+            <button 
+              onClick={resetQuiz}
+              className="flex-[2] flex items-center justify-center gap-2 py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold transition-all shadow-md hover:shadow-lg"
+            >
+              <RotateCcw size={20} />
+              სხვა ტესტის გავლა
+            </button>
+          </div>
         </div>
       </div>
     );
   }
 
-  if (questions.length > 0) {
+  // --- RENDER: ACTIVE QUIZ ---
+  if (viewMode === 'quiz' && questions.length > 0) {
     const currentQ = questions[currentQuestionIndex];
     const progress = ((currentQuestionIndex + 1) / questions.length) * 100;
 
@@ -135,17 +174,37 @@ export const QuizInterface: React.FC = () => {
 
         {/* Question Card */}
         <div className="flex-1 flex flex-col">
-          <h2 className="text-2xl md:text-3xl font-bold text-slate-900 mb-8 leading-snug">
+          <h2 className="text-2xl md:text-3xl font-bold text-slate-900 mb-4 leading-snug">
             {currentQ.question}
           </h2>
+
+          {/* Hint Section */}
+          <div className="mb-6 h-10">
+            {!isAnswerChecked && currentQ.hint && (
+              <div className="flex items-center">
+                {!showHint ? (
+                  <button 
+                    onClick={() => setShowHint(true)}
+                    className="flex items-center gap-2 text-amber-600 text-sm font-bold bg-amber-50 px-3 py-1.5 rounded-lg hover:bg-amber-100 transition-colors"
+                  >
+                    <Lightbulb size={16} />
+                    მინიშნება (HINT)
+                  </button>
+                ) : (
+                  <div className="flex items-center gap-2 text-amber-700 text-sm bg-amber-50 px-3 py-2 rounded-lg border border-amber-100 animate-fadeIn">
+                    <Lightbulb size={16} className="shrink-0" />
+                    <span>{currentQ.hint}</span>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
 
           <div className="space-y-4 mb-8">
             {currentQ.options.map((option, idx) => {
               const isSelected = selectedAnswer === idx;
               const isCorrect = idx === currentQ.correctAnswerIndex;
-              const showCorrect = isAnswerChecked && isCorrect;
-              const showWrong = isAnswerChecked && isSelected && !isCorrect;
-
+              
               let borderClass = "border-slate-200 hover:border-indigo-300 hover:bg-slate-50";
               let bgClass = "bg-white";
               let icon = null;
@@ -221,23 +280,100 @@ export const QuizInterface: React.FC = () => {
     );
   }
 
-  // Topic Selection View
+  // --- RENDER: HISTORY VIEW ---
+  if (viewMode === 'history') {
+    return (
+      <div className="space-y-6 animate-fadeIn max-w-4xl mx-auto">
+         <div className="flex items-center justify-between">
+            <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
+               <History className="text-indigo-600" />
+               ტესტირების ისტორია
+            </h2>
+            <button 
+               onClick={() => setViewMode('topic_select')}
+               className="text-indigo-600 font-bold hover:bg-indigo-50 px-4 py-2 rounded-xl transition-colors"
+            >
+               უკან დაბრუნება
+            </button>
+         </div>
+
+         {quizHistory.length === 0 ? (
+            <div className="bg-white p-12 rounded-3xl border border-slate-200 text-center shadow-sm">
+               <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-400">
+                  <History size={32} />
+               </div>
+               <h3 className="text-xl font-bold text-slate-700 mb-2">ისტორია ცარიელია</h3>
+               <p className="text-slate-500">ჯერ არ გაგივლიათ არცერთი ტესტი.</p>
+            </div>
+         ) : (
+            <div className="grid gap-4">
+               {quizHistory.map((item) => (
+                  <div key={item.id} className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+                     <div className="flex flex-col gap-1">
+                        <h3 className="font-bold text-lg text-slate-800">{item.topic}</h3>
+                        <div className="flex items-center gap-2 text-xs text-slate-500">
+                           <Clock size={14} />
+                           {item.date}
+                        </div>
+                     </div>
+                     <div className="flex items-center gap-4">
+                        <div className="text-right">
+                           <span className="block text-2xl font-bold text-indigo-600">{item.score}/{item.total}</span>
+                           <span className="text-xs text-slate-400 font-bold uppercase">ქულა</span>
+                        </div>
+                        <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-sm ${
+                           (item.score / item.total) >= 0.8 ? 'bg-green-500' : (item.score / item.total) >= 0.5 ? 'bg-yellow-500' : 'bg-red-500'
+                        }`}>
+                           {Math.round((item.score / item.total) * 100)}%
+                        </div>
+                     </div>
+                  </div>
+               ))}
+            </div>
+         )}
+      </div>
+    );
+  }
+
+  // --- RENDER: TOPIC SELECT (DEFAULT) ---
   return (
     <div className="space-y-8 animate-fadeIn">
       <div className="bg-gradient-to-r from-violet-600 to-fuchsia-600 rounded-3xl p-8 text-white shadow-lg relative overflow-hidden">
-         <div className="relative z-10">
-           <h1 className="text-3xl font-bold mb-2 flex items-center gap-3">
-             <ClipboardList size={32} />
-             ცოდნის შემოწმება
-           </h1>
-           <p className="text-violet-100 max-w-xl text-lg">
-             აირჩიეთ თემა და გაიარეთ AI-ს მიერ შედგენილი ტესტი თქვენი ცოდნის გასამყარებლად.
-           </p>
+         <div className="relative z-10 flex justify-between items-center">
+           <div>
+             <h1 className="text-3xl font-bold mb-2 flex items-center gap-3">
+               <ClipboardList size={32} />
+               ცოდნის შემოწმება
+             </h1>
+             <p className="text-violet-100 max-w-xl text-lg">
+               აირჩიეთ თემა და გაიარეთ AI-ს მიერ შედგენილი ტესტი.
+             </p>
+           </div>
+           {quizHistory.length > 0 && (
+              <button 
+                 onClick={() => setViewMode('history')}
+                 className="hidden md:flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-xl transition-all font-bold shadow-lg"
+              >
+                 <History size={18} />
+                 ისტორია
+              </button>
+           )}
          </div>
          <div className="absolute right-0 bottom-0 text-white/10 transform translate-x-1/4 translate-y-1/4">
             <ClipboardList size={200} />
          </div>
       </div>
+      
+      {/* Mobile History Button */}
+      {quizHistory.length > 0 && (
+         <button 
+            onClick={() => setViewMode('history')}
+            className="md:hidden w-full py-3 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold shadow-sm flex items-center justify-center gap-2"
+         >
+            <History size={18} />
+            ნახე ტესტების ისტორია
+         </button>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {mathTopics.map((topic) => (
@@ -250,7 +386,7 @@ export const QuizInterface: React.FC = () => {
               {topic.title}
             </h3>
             <p className="text-sm text-slate-500">
-              5 კითხვა
+              5 კითხვა • AI გენერაცია
             </p>
           </button>
         ))}
