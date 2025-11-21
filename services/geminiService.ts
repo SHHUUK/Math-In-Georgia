@@ -233,15 +233,17 @@ export const generateMockExam = async (): Promise<ExamQuestion[]> => {
       Language: Georgian.
       Format: JSON ONLY.
       
-      The exam should contain a mix of Algebra, Geometry, and Trigonometry.
+      The exam MUST contain exactly 40 QUESTIONS total.
       
-      Structure details:
-      - 15 Multiple Choice Questions (1 Point each). 4 Options.
-      - 3 Open-Ended Questions (3 or 4 Points each). No options.
+      Structure:
+      - Questions 1-35: Multiple Choice (1 Point each). 4 Options.
+      - Questions 36-40: Open-Ended (3 or 4 Points each). No options.
       
       Rules:
       - NO Latex. Use Unicode for math (x², √, etc).
-      - Be diverse in topics.
+      - Covers Algebra, Geometry, Statistics, Trigonometry.
+      - Keep text concise to ensure the JSON fits in the response.
+      - DO NOT return empty arrays.
       
       JSON Schema:
       [
@@ -251,15 +253,15 @@ export const generateMockExam = async (): Promise<ExamQuestion[]> => {
           "points": 1,
           "text": "Question text",
           "options": ["A", "B", "C", "D"],
-          "correctAnswer": "Index of correct option (0-3)"
+          "correctAnswer": "Index of correct option (0-3) as STRING"
         },
         ...
         {
-          "id": 16,
+          "id": 36,
           "type": "open",
           "points": 3,
-          "text": "Complex word problem text",
-          "rubric": "Short instructions for the grader on what the correct answer is"
+          "text": "Problem text",
+          "rubric": "Grading criteria"
         }
       ]
     `;
@@ -291,7 +293,7 @@ export const gradeOpenEndedQuestion = async (
   maxPoints: number
 ): Promise<{score: number, feedback: string}> => {
   const ai = getAiClient();
-  if (!ai) return { score: 0, feedback: "Error grading" };
+  if (!ai) return { score: 0, feedback: "Error: API Key missing" };
 
   try {
     const prompt = `
@@ -306,6 +308,7 @@ export const gradeOpenEndedQuestion = async (
       - If correct, give full points.
       - If partially correct, give partial points.
       - If wrong, give 0.
+      - Feedback MUST be in Georgian.
       
       Output JSON ONLY:
       {
@@ -323,10 +326,16 @@ export const gradeOpenEndedQuestion = async (
     });
     
     const text = response.text;
-    if (!text) return { score: 0, feedback: "Error" };
-    return JSON.parse(text.replace(/```json/g, '').replace(/```/g, '').trim());
+    if (!text) return { score: 0, feedback: "Error: No response" };
+    const result = JSON.parse(text.replace(/```json/g, '').replace(/```/g, '').trim());
+    
+    // Validate response
+    if (typeof result.score !== 'number') result.score = 0;
+    if (result.score > maxPoints) result.score = maxPoints;
+    
+    return result;
   } catch (error) {
     console.error("Grading Error:", error);
-    return { score: 0, feedback: "ვერ მოხერხდა შეფასება" };
+    return { score: 0, feedback: "შეფასების შეცდომა (სისტემური)" };
   }
 };
