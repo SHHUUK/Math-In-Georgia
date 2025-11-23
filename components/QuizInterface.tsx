@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { ClipboardList, CheckCircle2, XCircle, Loader2, ArrowRight, RotateCcw, Trophy, History, Clock, Lightbulb, Star, PlusCircle } from 'lucide-react';
 import { mathTopics } from '../data/mathContent';
@@ -8,8 +7,6 @@ import { MathRenderer } from './MathRenderer';
 
 export const QuizInterface: React.FC = () => {
   const [viewMode, setViewMode] = useState<'topic_select' | 'quiz' | 'results' | 'history'>('topic_select');
-  
-  // Quiz State
   const [activeTopic, setActiveTopic] = useState<string | null>(null);
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
   const [loading, setLoading] = useState(false);
@@ -19,11 +16,8 @@ export const QuizInterface: React.FC = () => {
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [isAnswerChecked, setIsAnswerChecked] = useState(false);
   const [showHint, setShowHint] = useState(false);
-
-  // History State
   const [quizHistory, setQuizHistory] = useState<QuizResult[]>([]);
 
-  // Load History from LocalStorage on Mount
   useEffect(() => {
     const savedHistory = localStorage.getItem('mathmaster_quiz_history');
     if (savedHistory) {
@@ -35,7 +29,6 @@ export const QuizInterface: React.FC = () => {
     }
   }, []);
 
-  // Save History to LocalStorage whenever it changes
   useEffect(() => {
     if (quizHistory.length > 0) {
       localStorage.setItem('mathmaster_quiz_history', JSON.stringify(quizHistory));
@@ -61,22 +54,12 @@ export const QuizInterface: React.FC = () => {
   const loadMoreQuestions = async () => {
     if (!activeTopic) return;
     setLoadingMore(true);
-    
-    // Generate new batch
     const newQuestions = await generateQuiz(activeTopic);
-    
-    // Append to existing questions
     setQuestions(prev => [...prev, ...newQuestions]);
-    
-    // Move to the first new question
-    setCurrentQuestionIndex(questions.length); // Index of the first new question
-    
-    // Reset question state
+    setCurrentQuestionIndex(questions.length);
     setSelectedAnswer(null);
     setIsAnswerChecked(false);
     setShowHint(false);
-    
-    // Return to quiz view
     setViewMode('quiz');
     setLoadingMore(false);
   };
@@ -88,9 +71,8 @@ export const QuizInterface: React.FC = () => {
 
   const checkAnswer = () => {
     if (selectedAnswer === null) return;
-    
     setIsAnswerChecked(true);
-    setShowHint(false); // Hide hint after checking
+    setShowHint(false);
     if (selectedAnswer === questions[currentQuestionIndex].correctAnswerIndex) {
       setScore(score + 1);
     }
@@ -103,16 +85,12 @@ export const QuizInterface: React.FC = () => {
       setIsAnswerChecked(false);
       setShowHint(false);
     } else {
-      // Finish Quiz
       finishQuiz();
     }
   };
 
   const finishQuiz = () => {
     setViewMode('results');
-    // Add to history
-    // Note: score is state, so it's up to date here because checkAnswer happened previously
-    
     const newResult: QuizResult = {
       id: Date.now().toString(),
       topic: activeTopic || 'Unknown',
@@ -120,7 +98,6 @@ export const QuizInterface: React.FC = () => {
       total: questions.length,
       date: new Date().toLocaleString('ka-GE', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
     };
-    
     setQuizHistory(prev => [newResult, ...prev]);
   };
 
@@ -138,7 +115,6 @@ export const QuizInterface: React.FC = () => {
   const getBestScoreForTopic = (topicTitle: string) => {
     const attempts = quizHistory.filter(h => h.topic === topicTitle);
     if (attempts.length === 0) return null;
-    // Find best percentage
     return attempts.reduce((best, current) => {
       const currentPct = current.score / current.total;
       const bestPct = best.score / best.total;
@@ -146,7 +122,6 @@ export const QuizInterface: React.FC = () => {
     });
   };
 
-  // --- RENDER: LOADING ---
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center h-full space-y-6 animate-fadeIn">
@@ -162,20 +137,16 @@ export const QuizInterface: React.FC = () => {
     );
   }
 
-  // --- RENDER: RESULTS ---
   if (viewMode === 'results') {
     const percentage = Math.round((score / questions.length) * 100);
-    
     return (
       <div className="flex flex-col items-center justify-center h-full max-w-2xl mx-auto animate-fadeIn text-center p-4">
         <div className="bg-white p-8 md:p-10 rounded-3xl shadow-lg border border-slate-200 w-full max-h-[80vh] overflow-y-auto custom-scrollbar">
           <div className="w-24 h-24 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-6">
             <Trophy size={48} className="text-yellow-600" />
           </div>
-          
           <h2 className="text-3xl font-bold text-slate-800 mb-2">შედეგი</h2>
           <p className="text-slate-500 mb-8">თქვენ დაასრულეთ ტესტი თემაზე: {activeTopic}</p>
-          
           <div className="grid grid-cols-2 gap-4 mb-8">
             <div className="bg-indigo-50 p-4 rounded-2xl">
               <div className="text-3xl font-bold text-indigo-600">{score} / {questions.length}</div>
@@ -186,31 +157,13 @@ export const QuizInterface: React.FC = () => {
               <div className="text-xs text-green-400 font-semibold uppercase tracking-wider mt-1">ეფექტურობა</div>
             </div>
           </div>
-
           <div className="flex flex-col gap-3">
-             <button 
-                onClick={loadMoreQuestions}
-                disabled={loadingMore}
-                className="w-full py-3 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-indigo-700 rounded-xl font-bold transition-all flex items-center justify-center gap-2 mb-2"
-             >
-                {loadingMore ? <Loader2 className="animate-spin" size={20} /> : <PlusCircle size={20} />}
-                კიდევ 5 კითხვის დამატება
+             <button onClick={loadMoreQuestions} disabled={loadingMore} className="w-full py-3 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-indigo-700 rounded-xl font-bold transition-all flex items-center justify-center gap-2 mb-2">
+                {loadingMore ? <Loader2 className="animate-spin" size={20} /> : <PlusCircle size={20} />} კიდევ 5 კითხვის დამატება
              </button>
-
              <div className="flex gap-3">
-               <button 
-                onClick={() => setViewMode('history')}
-                className="flex-1 py-4 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold transition-all"
-              >
-                ისტორია
-              </button>
-              <button 
-                onClick={resetQuiz}
-                className="flex-[2] flex items-center justify-center gap-2 py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold transition-all shadow-md hover:shadow-lg"
-              >
-                <RotateCcw size={20} />
-                სხვა ტესტის გავლა
-              </button>
+               <button onClick={() => setViewMode('history')} className="flex-1 py-4 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold transition-all">ისტორია</button>
+               <button onClick={resetQuiz} className="flex-[2] flex items-center justify-center gap-2 py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold transition-all shadow-md hover:shadow-lg"><RotateCcw size={20} /> სხვა ტესტის გავლა</button>
             </div>
           </div>
         </div>
@@ -218,44 +171,33 @@ export const QuizInterface: React.FC = () => {
     );
   }
 
-  // --- RENDER: ACTIVE QUIZ ---
   if (viewMode === 'quiz' && questions.length > 0) {
     const currentQ = questions[currentQuestionIndex];
     const progress = ((currentQuestionIndex + 1) / questions.length) * 100;
 
     return (
       <div className="max-w-3xl mx-auto h-full flex flex-col animate-fadeIn p-4">
-        {/* Progress Header */}
         <div className="mb-6 md:mb-8">
           <div className="flex justify-between items-end mb-2">
             <span className="text-sm font-bold text-indigo-600 uppercase tracking-wider">კითხვა {currentQuestionIndex + 1} / {questions.length}</span>
             <span className="text-xs text-slate-400 font-mono">{activeTopic}</span>
           </div>
           <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-            <div 
-              className="h-full bg-indigo-600 transition-all duration-500 ease-out rounded-full"
-              style={{ width: `${progress}%` }}
-            ></div>
+            <div className="h-full bg-indigo-600 transition-all duration-500 ease-out rounded-full" style={{ width: `${progress}%` }}></div>
           </div>
         </div>
 
-        {/* Question Card */}
         <div className="flex-1 flex flex-col overflow-y-auto pb-4 custom-scrollbar">
           <h2 className="text-xl md:text-3xl font-bold text-slate-900 mb-4 leading-snug">
             <MathRenderer text={currentQ.question} />
           </h2>
 
-          {/* Hint Section */}
           <div className="mb-6 min-h-[40px]">
             {!isAnswerChecked && currentQ.hint && (
               <div className="flex items-center">
                 {!showHint ? (
-                  <button 
-                    onClick={() => setShowHint(true)}
-                    className="flex items-center gap-2 text-amber-600 text-sm font-bold bg-amber-50 px-3 py-1.5 rounded-lg hover:bg-amber-100 transition-colors"
-                  >
-                    <Lightbulb size={16} />
-                    მინიშნება (HINT)
+                  <button onClick={() => setShowHint(true)} className="flex items-center gap-2 text-amber-600 text-sm font-bold bg-amber-50 px-3 py-1.5 rounded-lg hover:bg-amber-100 transition-colors">
+                    <Lightbulb size={16} /> მინიშნება (HINT)
                   </button>
                 ) : (
                   <div className="flex items-center gap-2 text-amber-700 text-sm bg-amber-50 px-3 py-2 rounded-lg border border-amber-100 animate-fadeIn">
@@ -271,7 +213,6 @@ export const QuizInterface: React.FC = () => {
             {currentQ.options.map((option, idx) => {
               const isSelected = selectedAnswer === idx;
               const isCorrect = idx === currentQ.correctAnswerIndex;
-              
               let borderClass = "border-slate-200 hover:border-indigo-300 hover:bg-slate-50";
               let bgClass = "bg-white";
               let icon = null;
@@ -309,14 +250,10 @@ export const QuizInterface: React.FC = () => {
             })}
           </div>
 
-          {/* Feedback Section */}
           {isAnswerChecked && (
             <div className="bg-slate-50 border border-slate-200 p-6 rounded-2xl mb-6 animate-fadeIn">
               <h4 className="font-bold text-slate-800 mb-2 flex items-center gap-2">
-                <div className="bg-indigo-100 p-1 rounded-md text-indigo-600">
-                  <ClipboardList size={16} />
-                </div>
-                განმარტება
+                <div className="bg-indigo-100 p-1 rounded-md text-indigo-600"><ClipboardList size={16} /></div> განმარტება
               </h4>
               <div className="text-slate-600 leading-relaxed">
                 <MathRenderer text={currentQ.explanation} />
@@ -324,7 +261,6 @@ export const QuizInterface: React.FC = () => {
             </div>
           )}
 
-          {/* Actions */}
           <div className="mt-auto pt-4">
             {!isAnswerChecked ? (
               <button
@@ -335,12 +271,8 @@ export const QuizInterface: React.FC = () => {
                 შემოწმება
               </button>
             ) : (
-              <button
-                onClick={nextQuestion}
-                className="w-full py-4 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold shadow-lg transition-all flex items-center justify-center gap-2"
-              >
-                {currentQuestionIndex < questions.length - 1 ? 'შემდეგი კითხვა' : 'შედეგის ნახვა'}
-                <ArrowRight size={20} />
+              <button onClick={nextQuestion} className="w-full py-4 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold shadow-lg transition-all flex items-center justify-center gap-2">
+                {currentQuestionIndex < questions.length - 1 ? 'შემდეგი კითხვა' : 'შედეგის ნახვა'} <ArrowRight size={20} />
               </button>
             )}
           </div>
@@ -349,28 +281,16 @@ export const QuizInterface: React.FC = () => {
     );
   }
 
-  // --- RENDER: HISTORY VIEW ---
   if (viewMode === 'history') {
     return (
       <div className="space-y-6 animate-fadeIn max-w-4xl mx-auto p-4">
          <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
-               <History className="text-indigo-600" />
-               ტესტირების ისტორია
-            </h2>
-            <button 
-               onClick={() => setViewMode('topic_select')}
-               className="text-indigo-600 font-bold hover:bg-indigo-50 px-4 py-2 rounded-xl transition-colors"
-            >
-               უკან დაბრუნება
-            </button>
+            <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2"><History className="text-indigo-600" /> ტესტირების ისტორია</h2>
+            <button onClick={() => setViewMode('topic_select')} className="text-indigo-600 font-bold hover:bg-indigo-50 px-4 py-2 rounded-xl transition-colors">უკან დაბრუნება</button>
          </div>
-
          {quizHistory.length === 0 ? (
             <div className="bg-white p-12 rounded-3xl border border-slate-200 text-center shadow-sm">
-               <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-400">
-                  <History size={32} />
-               </div>
+               <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-400"><History size={32} /></div>
                <h3 className="text-xl font-bold text-slate-700 mb-2">ისტორია ცარიელია</h3>
                <p className="text-slate-500">ჯერ არ გაგივლიათ არცერთი ტესტი.</p>
             </div>
@@ -380,19 +300,14 @@ export const QuizInterface: React.FC = () => {
                   <div key={item.id} className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
                      <div className="flex flex-col gap-1">
                         <h3 className="font-bold text-lg text-slate-800">{item.topic}</h3>
-                        <div className="flex items-center gap-2 text-xs text-slate-500">
-                           <Clock size={14} />
-                           {item.date}
-                        </div>
+                        <div className="flex items-center gap-2 text-xs text-slate-500"><Clock size={14} /> {item.date}</div>
                      </div>
                      <div className="flex items-center gap-4">
                         <div className="text-right">
                            <span className="block text-2xl font-bold text-indigo-600">{item.score}/{item.total}</span>
                            <span className="text-xs text-slate-400 font-bold uppercase">ქულა</span>
                         </div>
-                        <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-sm ${
-                           (item.score / item.total) >= 0.8 ? 'bg-green-500' : (item.score / item.total) >= 0.5 ? 'bg-yellow-500' : 'bg-red-500'
-                        }`}>
+                        <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-sm ${(item.score / item.total) >= 0.8 ? 'bg-green-500' : (item.score / item.total) >= 0.5 ? 'bg-yellow-500' : 'bg-red-500'}`}>
                            {Math.round((item.score / item.total) * 100)}%
                         </div>
                      </div>
@@ -404,70 +319,37 @@ export const QuizInterface: React.FC = () => {
     );
   }
 
-  // --- RENDER: TOPIC SELECT (DEFAULT) ---
   return (
     <div className="space-y-8 animate-fadeIn p-4">
       <div className="bg-gradient-to-r from-violet-600 to-fuchsia-600 rounded-3xl p-8 text-white shadow-lg relative overflow-hidden">
          <div className="relative z-10 flex justify-between items-center">
            <div>
-             <h1 className="text-3xl font-bold mb-2 flex items-center gap-3">
-               <ClipboardList size={32} />
-               ცოდნის შემოწმება
-             </h1>
-             <p className="text-violet-100 max-w-xl text-lg">
-               აირჩიეთ თემა და გაიარეთ AI-ს მიერ შედგენილი ტესტი.
-             </p>
+             <h1 className="text-3xl font-bold mb-2 flex items-center gap-3"><ClipboardList size={32} /> ცოდნის შემოწმება</h1>
+             <p className="text-violet-100 max-w-xl text-lg">აირჩიეთ თემა და გაიარეთ AI-ს მიერ შედგენილი ტესტი.</p>
            </div>
            {quizHistory.length > 0 && (
-              <button 
-                 onClick={() => setViewMode('history')}
-                 className="hidden md:flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-xl transition-all font-bold shadow-lg"
-              >
-                 <History size={18} />
-                 ისტორია
+              <button onClick={() => setViewMode('history')} className="hidden md:flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-xl transition-all font-bold shadow-lg">
+                 <History size={18} /> ისტორია
               </button>
            )}
          </div>
-         <div className="absolute right-0 bottom-0 text-white/10 transform translate-x-1/4 translate-y-1/4">
-            <ClipboardList size={200} />
-         </div>
       </div>
-      
-      {/* Mobile History Button */}
       {quizHistory.length > 0 && (
-         <button 
-            onClick={() => setViewMode('history')}
-            className="md:hidden w-full py-3 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold shadow-sm flex items-center justify-center gap-2"
-         >
-            <History size={18} />
-            ნახე ტესტების ისტორია
+         <button onClick={() => setViewMode('history')} className="md:hidden w-full py-3 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold shadow-sm flex items-center justify-center gap-2">
+            <History size={18} /> ნახე ტესტების ისტორია
          </button>
       )}
-
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {mathTopics.map((topic) => {
           const best = getBestScoreForTopic(topic.title);
           return (
-            <button
-              key={topic.id}
-              onClick={() => startQuiz(topic.id, topic.title)}
-              className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-violet-300 hover:-translate-y-1 transition-all duration-300 text-left group relative overflow-hidden"
-            >
+            <button key={topic.id} onClick={() => startQuiz(topic.id, topic.title)} className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-violet-300 hover:-translate-y-1 transition-all duration-300 text-left group relative overflow-hidden">
               <div className="relative z-10">
                 <div className="flex justify-between items-start">
-                   <h3 className="text-lg font-bold text-slate-800 group-hover:text-violet-700 transition-colors mb-1">
-                     {topic.title}
-                   </h3>
-                   {best && (
-                     <div className="flex items-center gap-1 bg-green-50 text-green-600 px-2 py-0.5 rounded-md text-xs font-bold border border-green-100" title="საუკეთესო შედეგი">
-                        <Star size={12} fill="currentColor" />
-                        {best.score}/{best.total}
-                     </div>
-                   )}
+                   <h3 className="text-lg font-bold text-slate-800 group-hover:text-violet-700 transition-colors mb-1">{topic.title}</h3>
+                   {best && <div className="flex items-center gap-1 bg-green-50 text-green-600 px-2 py-0.5 rounded-md text-xs font-bold border border-green-100"><Star size={12} fill="currentColor" /> {best.score}/{best.total}</div>}
                 </div>
-                <p className="text-sm text-slate-500">
-                  5 კითხვა • AI გენერაცია
-                </p>
+                <p className="text-sm text-slate-500">5 კითხვა • AI გენერაცია</p>
               </div>
               {best && <div className="absolute bottom-0 left-0 h-1 bg-green-500" style={{ width: `${(best.score/best.total)*100}%` }}></div>}
             </button>

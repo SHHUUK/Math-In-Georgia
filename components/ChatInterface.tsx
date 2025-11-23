@@ -1,21 +1,39 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Bot, User, Loader2, Plus, Image as ImageIcon, X } from 'lucide-react';
 import { chatWithGemini } from '../services/geminiService';
 import { ChatMessage, ChatRole } from '../types';
+import { MathRenderer } from './MathRenderer';
 
 export const ChatInterface: React.FC = () => {
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    { role: ChatRole.MODEL, text: 'გამარჯობა! მე ვარ შენი მათემატიკის დამხმარე. მკითხე ნებისმიერი რამ ფორმულებზე ან ამოცანებზე.' }
-  ]);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   
   // Image Upload State
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Load History from LocalStorage
+  useEffect(() => {
+    const saved = localStorage.getItem('mathmaster_chat_history');
+    if (saved) {
+      try {
+        setMessages(JSON.parse(saved));
+      } catch (e) {
+        setMessages([{ role: ChatRole.MODEL, text: 'გამარჯობა! მე ვარ შენი მათემატიკის დამხმარე. მკითხე ნებისმიერი რამ ფორმულებზე ან ამოცანებზე.' }]);
+      }
+    } else {
+      setMessages([{ role: ChatRole.MODEL, text: 'გამარჯობა! მე ვარ შენი მათემატიკის დამხმარე. მკითხე ნებისმიერი რამ ფორმულებზე ან ამოცანებზე.' }]);
+    }
+  }, []);
+
+  // Save History to LocalStorage
+  useEffect(() => {
+    if (messages.length > 0) {
+      localStorage.setItem('mathmaster_chat_history', JSON.stringify(messages));
+    }
+  }, [messages]);
 
   const scrollToBottom = () => {
     if (scrollRef.current) {
@@ -25,7 +43,7 @@ export const ChatInterface: React.FC = () => {
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages, isTyping]); // Also scroll when typing status changes
+  }, [messages, isTyping]);
 
   const handleImageSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -36,7 +54,6 @@ export const ChatInterface: React.FC = () => {
       };
       reader.readAsDataURL(file);
     }
-    // Reset input so same file can be selected again if needed
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -47,8 +64,6 @@ export const ChatInterface: React.FC = () => {
   const handleSend = async () => {
     if (!input.trim() && !selectedImage) return;
 
-    // Prepare message content for UI
-    // Note: In a real app you might want to show the image in the chat history UI too
     const userMsg: ChatMessage = { 
       role: ChatRole.USER, 
       text: input + (selectedImage ? ' [სურათი თანდართულია]' : '') 
@@ -57,11 +72,10 @@ export const ChatInterface: React.FC = () => {
     setMessages(prev => [...prev, userMsg]);
     setInput('');
     
-    // Store image temporarily for the API call, then clear it
     const imageToSend = selectedImage ? selectedImage.split(',')[1] : undefined;
     const mimeType = selectedImage ? selectedImage.substring(selectedImage.indexOf(':') + 1, selectedImage.indexOf(';')) : undefined;
     
-    setSelectedImage(null); // Clear preview immediately
+    setSelectedImage(null);
     setIsTyping(true);
 
     const responseText = await chatWithGemini(messages, input, imageToSend, mimeType);
@@ -105,8 +119,8 @@ export const ChatInterface: React.FC = () => {
                   : 'bg-white border border-slate-200 text-slate-800 rounded-tl-none'
               }`}
             >
-              <div className={`whitespace-pre-wrap text-[15px] leading-relaxed font-medium ${msg.role === ChatRole.MODEL ? 'font-sans' : ''}`}>
-                {msg.text}
+              <div className={`text-[15px] leading-relaxed font-medium`}>
+                <MathRenderer text={msg.text} className={msg.role === ChatRole.USER ? 'text-white' : 'text-slate-800'} />
               </div>
             </div>
           </div>
@@ -124,7 +138,6 @@ export const ChatInterface: React.FC = () => {
 
       {/* Input Area */}
       <div className="p-4 bg-white border-t border-slate-200">
-        {/* Image Preview */}
         {selectedImage && (
           <div className="mb-3 relative inline-block animate-in slide-in-from-bottom-2">
             <img 
@@ -150,7 +163,6 @@ export const ChatInterface: React.FC = () => {
             className="hidden"
           />
           
-          {/* Plus/Image Button */}
           <button 
             onClick={() => fileInputRef.current?.click()}
             className="mb-1 p-3 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all"

@@ -91,8 +91,10 @@ export const MathCard: React.FC<MathCardProps> = ({ topic, onClick }) => {
     <div 
       onClick={onClick}
       className={`bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden 
-        hover:shadow-xl hover:shadow-indigo-500/10 hover:-translate-y-1 hover:scale-[1.02] hover:border-indigo-300 
-        transition-all duration-300 ease-in-out flex flex-col group h-full 
+        transform transition-all duration-300 ease-out
+        hover:scale-[1.02] hover:-translate-y-1 
+        hover:shadow-xl hover:shadow-indigo-500/20 hover:border-indigo-300 
+        flex flex-col group h-full 
         ${onClick ? 'cursor-pointer' : ''}`}
     >
       <div className={`h-48 overflow-hidden relative ${!showImage ? `bg-gradient-to-br ${gradientClass}` : 'bg-indigo-50'}`}>

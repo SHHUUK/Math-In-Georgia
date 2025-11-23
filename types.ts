@@ -41,7 +41,8 @@ export enum AppView {
   BOARD = 'board',
   CALCULATOR = 'calculator',
   MOBILE_CONNECT = 'mobile_connect',
-  NATIONAL_EXAM = 'national_exam'
+  NATIONAL_EXAM = 'national_exam',
+  GEOMETRY = 'geometry'
 }
 
 export interface QuizQuestion {
