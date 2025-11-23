@@ -455,7 +455,13 @@ export const solveGeometryProblem = async (problemText: string, base64Image?: st
 
     const text = response.text;
     if (!text) return null;
-    return JSON.parse(text.replace(/```json/g, '').replace(/```/g, '').trim());
+    const parsed = JSON.parse(text.replace(/```json/g, '').replace(/```/g, '').trim());
+    
+    // Safety check for arrays
+    if (!parsed.shapes) parsed.shapes = [];
+    if (!parsed.steps) parsed.steps = [];
+    
+    return parsed;
   } catch (error) {
     console.error("Geometry Error:", error);
     return null;

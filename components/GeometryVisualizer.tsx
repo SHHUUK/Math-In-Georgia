@@ -53,17 +53,25 @@ export const GeometryVisualizer: React.FC = () => {
 
   // Auto-Fit Logic: When data changes, calculate bounds and center the view
   useEffect(() => {
-    if (data && data.shapes.length > 0) {
+    if (data && data.shapes && data.shapes.length > 0) {
       let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
       
       data.shapes.forEach(shape => {
-        shape.points.forEach(p => {
-          if (p.x < minX) minX = p.x;
-          if (p.x > maxX) maxX = p.x;
-          if (p.y < minY) minY = p.y;
-          if (p.y > maxY) maxY = p.y;
-        });
+        if (shape.points) {
+          shape.points.forEach(p => {
+            if (p.x < minX) minX = p.x;
+            if (p.x > maxX) maxX = p.x;
+            if (p.y < minY) minY = p.y;
+            if (p.y > maxY) maxY = p.y;
+          });
+        }
       });
+
+      if (minX === Infinity) {
+         // No valid points found
+         setViewBox("0 0 800 600");
+         return;
+      }
 
       // Add padding
       const padding = 60;
@@ -93,11 +101,11 @@ export const GeometryVisualizer: React.FC = () => {
 
   // Helper: Update Measurements based on current shape state
   const updateMeasurements = () => {
-    if (!data) return;
+    if (!data || !data.shapes) return;
     const notes: string[] = [];
 
     data.shapes.forEach(shape => {
-      if (shape.type === 'polygon' || shape.type === 'line') {
+      if ((shape.type === 'polygon' || shape.type === 'line') && shape.points) {
         for (let i = 0; i < shape.points.length; i++) {
           const p1 = shape.points[i];
           const p2 = shape.points[(i + 1) % shape.points.length];
@@ -161,7 +169,7 @@ export const GeometryVisualizer: React.FC = () => {
 
     const newData = { ...data };
     const shape = newData.shapes.find(s => s.id === selectedPoint.shapeId);
-    if (shape) {
+    if (shape && shape.points) {
       shape.points[selectedPoint.pointIndex].x = x;
       shape.points[selectedPoint.pointIndex].y = y;
       setData(newData);
@@ -258,10 +266,10 @@ export const GeometryVisualizer: React.FC = () => {
                 )}
 
                 {/* Geometric Shapes Layer */}
-                {data?.shapes.map(shape => (
+                {data?.shapes?.map(shape => (
                   <g key={shape.id}>
                       {/* Render Shape */}
-                      {shape.type === 'polygon' && (
+                      {shape.type === 'polygon' && shape.points && (
                         <polygon 
                           points={shape.points.map(p => `${p.x},${p.y}`).join(' ')}
                           fill="rgba(79, 70, 229, 0.1)"
@@ -269,7 +277,7 @@ export const GeometryVisualizer: React.FC = () => {
                           strokeWidth="2"
                         />
                       )}
-                      {shape.type === 'line' && (
+                      {shape.type === 'line' && shape.points && (
                         <polyline
                             points={shape.points.map(p => `${p.x},${p.y}`).join(' ')}
                             fill="none"
@@ -279,7 +287,7 @@ export const GeometryVisualizer: React.FC = () => {
                       )}
 
                       {/* Render Points & Labels */}
-                      {shape.points.map((p, idx) => (
+                      {shape.points?.map((p, idx) => (
                         <g key={idx} onMouseDown={() => handleMouseDown(shape.id, idx)} style={{cursor: 'grab'}}>
                             <circle cx={p.x} cy={p.y} r="6" fill="white" stroke="#4f46e5" strokeWidth="2" />
                             <text 
@@ -393,7 +401,7 @@ export const GeometryVisualizer: React.FC = () => {
                   <h3 className="font-bold text-xs text-slate-400 uppercase tracking-wider mb-3">ნაბიჯები</h3>
                   <div className="space-y-3 relative">
                      <div className="absolute left-[11px] top-2 bottom-2 w-0.5 bg-slate-100"></div>
-                     {data.steps.map((step, idx) => (
+                     {data.steps?.map((step, idx) => (
                         <div key={idx} className="flex gap-3 relative z-10">
                            <div className="w-6 h-6 rounded-full bg-indigo-50 border-2 border-indigo-100 text-indigo-600 flex items-center justify-center text-xs font-bold shrink-0">
                              {idx + 1}

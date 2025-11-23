@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { ClipboardList, CheckCircle2, XCircle, Loader2, ArrowRight, RotateCcw, Trophy, History, Clock, Lightbulb, Star, PlusCircle } from 'lucide-react';
 import { mathTopics } from '../data/mathContent';
@@ -210,7 +211,7 @@ export const QuizInterface: React.FC = () => {
           </div>
 
           <div className="space-y-4 mb-8">
-            {currentQ.options.map((option, idx) => {
+            {currentQ.options?.map((option, idx) => {
               const isSelected = selectedAnswer === idx;
               const isCorrect = idx === currentQ.correctAnswerIndex;
               let borderClass = "border-slate-200 hover:border-indigo-300 hover:bg-slate-50";
