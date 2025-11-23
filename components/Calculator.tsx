@@ -1,9 +1,9 @@
 
-
 import React, { useState, useEffect } from 'react';
 import { 
   Calculator as CalcIcon, RefreshCw, Scale, Zap, 
-  Coins, ArrowRight, History, Trash2, Divide, X, Circle
+  Coins, ArrowRight, History, Trash2, Divide, X, Circle,
+  MoveRight, DollarSign
 } from 'lucide-react';
 
 type CalcMode = 'scientific' | 'units' | 'currency' | 'physics';
@@ -24,19 +24,23 @@ export const Calculator: React.FC = () => {
   const [toUnit, setToUnit] = useState('km');
   const [convResult, setConvResult] = useState('');
 
+  // --- Currency State ---
+  const [currAmount, setCurrAmount] = useState('100');
+  const [currFrom, setCurrFrom] = useState('USD');
+  const [currTo, setCurrTo] = useState('GEL');
+  const [currResult, setCurrResult] = useState('');
+
   // --- Physics State ---
   const [physicsFormula, setPhysicsFormula] = useState('velocity');
-  const [physicsInputs, setPhysicsInputs] = useState<Record<string, string>>({ a: '', b: '' });
+  const [physicsInputs, setPhysicsInputs] = useState<Record<string, string>>({ d: '', t: '' });
   const [physicsResult, setPhysicsResult] = useState<string | null>(null);
 
   // --- Scientific Logic ---
-  
-  // Advanced Evaluation Function
   const evaluateExpression = (expr: string): string => {
     try {
       let parsed = expr;
 
-      // 1. Handle Factorials
+      // Handle Factorials
       while (parsed.includes('!')) {
         parsed = parsed.replace(/(\d+)!/g, (_, n) => {
           let num = parseInt(n);
@@ -46,22 +50,19 @@ export const Calculator: React.FC = () => {
         });
       }
 
-      // 2. Pre-process Trig for Degrees
-      // If NOT Radians, we must convert input from Deg to Rad before passing to Math.sin
+      // Handle Degrees/Radians for Trig
       const trigFuncs = ['sin', 'cos', 'tan'];
       if (!isRadians) {
         trigFuncs.forEach(func => {
-           // Regex looks for "sin(number)"
            const regex = new RegExp(`${func}\\(([\\d\\.]+)\\)`, 'g');
            parsed = parsed.replace(regex, (_, num) => {
               const deg = parseFloat(num);
               const rad = deg * (Math.PI / 180);
-              return `${func}(${rad})`; // This will be handled by step 3
+              return `${func}(${rad})`; 
            });
         });
       }
 
-      // 3. Replace Visual Symbols with JS Math
       parsed = parsed
         .replace(/×/g, '*')
         .replace(/÷/g, '/')
@@ -82,7 +83,6 @@ export const Calculator: React.FC = () => {
       const res = new Function('return ' + parsed)();
       
       if (!isFinite(res) || isNaN(res)) return 'Error';
-      // Handle Floating Point precision
       return Number.isInteger(res) ? res.toString() : parseFloat(res.toFixed(8)).toString();
     } catch (e) {
       return 'Error';
@@ -101,44 +101,28 @@ export const Calculator: React.FC = () => {
       if (res !== 'Error') {
         setHistory(prev => [`${display} = ${res}`, ...prev].slice(0, 10));
       }
+    } else if (['sin', 'cos', 'tan', 'log', 'ln', '√', '∛', 'abs'].includes(val)) {
+      setDisplay(prev => prev + val + '(');
     } else if (val === 'x²') {
       setDisplay(prev => prev + '^2');
     } else if (val === 'x³') {
       setDisplay(prev => prev + '^3');
-    } else if (val === 'xʸ') {
-      setDisplay(prev => prev + '^');
-    } else if (val === '√') {
-      setDisplay(prev => prev + '√(');
-    } else if (val === '∛') {
-      setDisplay(prev => prev + '∛(');
-    } else if (val === 'mod') {
-      setDisplay(prev => prev + 'mod');
-    } else if (val === 'log') {
-      setDisplay(prev => prev + 'log(');
-    } else if (val === 'ln') {
-      setDisplay(prev => prev + 'ln(');
-    } else if (val === 'n!') {
-      setDisplay(prev => prev + '!');
-    } else if (['sin', 'cos', 'tan', 'abs'].includes(val)) {
-      setDisplay(prev => prev + val + '(');
     } else {
-      const ops = ['+', '-', '×', '÷', '^', '.', '%'];
-      if (ops.includes(val) && ops.includes(display.slice(-1))) {
-        return; 
-      }
       setDisplay(prev => prev + val);
     }
   };
 
-  // --- Converter & Currency Logic (Same as before) ---
+  // --- Unit Converter Logic ---
+  const unitCategories = {
+    length: { label: 'სიგრძე', units: ['mm', 'cm', 'm', 'km', 'inch', 'ft', 'mile'] },
+    weight: { label: 'წონა', units: ['mg', 'g', 'kg', 'ton', 'oz', 'lb'] },
+    time: { label: 'დრო', units: ['sec', 'min', 'hour', 'day'] }
+  };
+
   const conversionRates: Record<string, number> = {
     mm: 0.001, cm: 0.01, m: 1, km: 1000, inch: 0.0254, ft: 0.3048, mile: 1609.34,
     mg: 0.001, g: 1, kg: 1000, ton: 1000000, oz: 28.3495, lb: 453.592,
     sec: 1, min: 60, hour: 3600, day: 86400,
-  };
-
-  const currencyRates: Record<string, number> = {
-    GEL: 1.00, USD: 2.75, EUR: 2.95, GBP: 3.50, TRY: 0.08, RUB: 0.028
   };
 
   useEffect(() => {
@@ -147,100 +131,110 @@ export const Calculator: React.FC = () => {
       const toRate = conversionRates[toUnit];
       if (fromRate && toRate) {
         const val = parseFloat(convValue) || 0;
-        setConvResult(((val * fromRate) / toRate).toFixed(6));
+        setConvResult(((val * fromRate) / toRate).toFixed(4));
       }
     }
   }, [convValue, fromUnit, toUnit, mode]);
 
-  const calculateCurrency = () => {
-    const val = parseFloat(convValue) || 0;
-    return ((val * currencyRates[fromUnit]) / currencyRates[toUnit]).toFixed(2);
+  // --- Currency Logic ---
+  // Base: GEL
+  const currencyRates: Record<string, number> = {
+    GEL: 1.00, 
+    USD: 2.75, // 1 USD = 2.75 GEL
+    EUR: 2.95, 
+    GBP: 3.50, 
+    TRY: 0.08, 
+    RUB: 0.028
   };
+
+  useEffect(() => {
+    if (mode === 'currency') {
+        const amount = parseFloat(currAmount) || 0;
+        // Convert to GEL first, then to Target
+        // Example: 100 USD -> GEL: 100 * 2.75 = 275 GEL
+        // 275 GEL -> EUR: 275 / 2.95 = 93.22 EUR
+        const inGel = amount * currencyRates[currFrom];
+        const final = inGel / currencyRates[currTo];
+        setCurrResult(final.toFixed(2));
+    }
+  }, [currAmount, currFrom, currTo, mode]);
 
   // --- Physics Logic ---
   const physicsFormulas = {
     velocity: { title: 'სიჩქარე (V = d/t)', inputs: { d: 'მანძილი (m)', t: 'დრო (s)' }, calc: (v: any) => Number(v.d) / Number(v.t) },
     force: { title: 'ძალა (F = ma)', inputs: { m: 'მასა (kg)', a: 'აჩქარება (m/s²)' }, calc: (v: any) => Number(v.m) * Number(v.a) },
     ohm: { title: 'ომის კანონი (I = V/R)', inputs: { v: 'ძაბვა (V)', r: 'წინაღობა (Ω)' }, calc: (v: any) => Number(v.v) / Number(v.r) },
+    power: { title: 'სიმძლავრე (P = W/t)', inputs: { w: 'მუშაობა (J)', t: 'დრო (s)' }, calc: (v: any) => Number(v.w) / Number(v.t) }
   };
 
-  const calculatePhysics = () => {
-    const formula = physicsFormulas[physicsFormula as keyof typeof physicsFormulas];
-    if (!formula) return;
-    const res = formula.calc(physicsInputs);
-    setPhysicsResult(Number.isInteger(res) ? res.toString() : res.toFixed(4));
+  const handlePhysicsCalc = () => {
+    const f = physicsFormulas[physicsFormula as keyof typeof physicsFormulas];
+    const res = f.calc(physicsInputs);
+    setPhysicsResult(res.toFixed(4));
   };
 
-  // --- Buttons Config ---
+  // --- UI Helpers ---
   const sciButtons = [
-    { l: '2nd', v: '2nd', c: 'text-indigo-600 bg-indigo-50 border border-indigo-100' }, { l: 'π', v: 'π', c: 'bg-slate-100 text-slate-800' }, { l: 'e', v: 'e', c: 'bg-slate-100 text-slate-800' }, { l: 'C', v: 'C', c: 'text-red-600 bg-red-50 border border-red-100' }, { l: 'DEL', v: 'DEL', c: 'text-red-600 bg-red-50 border border-red-100' },
-    { l: 'x²', v: 'x²', c: 'bg-slate-100 text-slate-800' }, { l: '1/x', v: '^(-1)', c: 'bg-slate-100 text-slate-800' }, { l: '|x|', v: 'abs', c: 'bg-slate-100 text-slate-800' }, { l: 'mod', v: 'mod', c: 'bg-slate-100 text-slate-800' }, { l: '÷', v: '÷', c: 'text-indigo-700 bg-indigo-50 border border-indigo-100' },
-    { l: '√x', v: '√', c: 'bg-slate-100 text-slate-800' }, { l: 'sin', v: 'sin', c: 'bg-slate-100 text-slate-800' }, { l: 'cos', v: 'cos', c: 'bg-slate-100 text-slate-800' }, { l: 'tan', v: 'tan', c: 'bg-slate-100 text-slate-800' }, { l: '×', v: '×', c: 'text-indigo-700 bg-indigo-50 border border-indigo-100' },
-    { l: 'xʸ', v: 'xʸ', c: 'bg-slate-100 text-slate-800' }, { l: '7', v: '7', c: 'bg-white text-slate-900 text-xl border border-slate-200' }, { l: '8', v: '8', c: 'bg-white text-slate-900 text-xl border border-slate-200' }, { l: '9', v: '9', c: 'bg-white text-slate-900 text-xl border border-slate-200' }, { l: '-', v: '-', c: 'text-indigo-700 bg-indigo-50 border border-indigo-100' },
-    { l: '10ˣ', v: '10^', c: 'bg-slate-100 text-slate-800' }, { l: '4', v: '4', c: 'bg-white text-slate-900 text-xl border border-slate-200' }, { l: '5', v: '5', c: 'bg-white text-slate-900 text-xl border border-slate-200' }, { l: '6', v: '6', c: 'bg-white text-slate-900 text-xl border border-slate-200' }, { l: '+', v: '+', c: 'text-indigo-700 bg-indigo-50 border border-indigo-100' },
-    { l: 'log', v: 'log', c: 'bg-slate-100 text-slate-800' }, { l: '1', v: '1', c: 'bg-white text-slate-900 text-xl border border-slate-200' }, { l: '2', v: '2', c: 'bg-white text-slate-900 text-xl border border-slate-200' }, { l: '3', v: '3', c: 'bg-white text-slate-900 text-xl border border-slate-200' }, { l: '=', v: '=', c: 'row-span-2 bg-indigo-600 text-white text-2xl shadow-lg hover:bg-indigo-700' },
-    { l: 'ln', v: 'ln', c: 'bg-slate-100 text-slate-800' }, { l: 'x³', v: 'x³', c: 'bg-slate-100 text-slate-800' }, { l: '0', v: '0', c: 'bg-white text-slate-900 text-xl border border-slate-200' }, { l: '.', v: '.', c: 'bg-white text-slate-900 text-xl border border-slate-200' }
+    { l: '2nd', v: '2nd', c: 'text-indigo-600 bg-indigo-50' }, { l: 'π', v: 'π', c: 'bg-slate-100' }, { l: 'e', v: 'e', c: 'bg-slate-100' }, { l: 'C', v: 'C', c: 'text-red-600 bg-red-50' }, { l: 'DEL', v: 'DEL', c: 'text-red-600 bg-red-50' },
+    { l: 'x²', v: 'x²', c: 'bg-slate-100' }, { l: '1/x', v: '^(-1)', c: 'bg-slate-100' }, { l: '|x|', v: 'abs', c: 'bg-slate-100' }, { l: 'mod', v: 'mod', c: 'bg-slate-100' }, { l: '÷', v: '÷', c: 'text-indigo-700 bg-indigo-50' },
+    { l: '√x', v: '√', c: 'bg-slate-100' }, { l: 'sin', v: 'sin', c: 'bg-slate-100' }, { l: 'cos', v: 'cos', c: 'bg-slate-100' }, { l: 'tan', v: 'tan', c: 'bg-slate-100' }, { l: '×', v: '×', c: 'text-indigo-700 bg-indigo-50' },
+    { l: 'xʸ', v: 'xʸ', c: 'bg-slate-100' }, { l: '7', v: '7', c: 'bg-white border-slate-200 text-slate-900' }, { l: '8', v: '8', c: 'bg-white border-slate-200 text-slate-900' }, { l: '9', v: '9', c: 'bg-white border-slate-200 text-slate-900' }, { l: '-', v: '-', c: 'text-indigo-700 bg-indigo-50' },
+    { l: '10ˣ', v: '10^', c: 'bg-slate-100' }, { l: '4', v: '4', c: 'bg-white border-slate-200 text-slate-900' }, { l: '5', v: '5', c: 'bg-white border-slate-200 text-slate-900' }, { l: '6', v: '6', c: 'bg-white border-slate-200 text-slate-900' }, { l: '+', v: '+', c: 'text-indigo-700 bg-indigo-50' },
+    { l: 'log', v: 'log', c: 'bg-slate-100' }, { l: '1', v: '1', c: 'bg-white border-slate-200 text-slate-900' }, { l: '2', v: '2', c: 'bg-white border-slate-200 text-slate-900' }, { l: '3', v: '3', c: 'bg-white border-slate-200 text-slate-900' }, { l: '=', v: '=', c: 'row-span-2 bg-indigo-600 text-white shadow-lg hover:bg-indigo-700' },
+    { l: 'ln', v: 'ln', c: 'bg-slate-100' }, { l: 'x³', v: 'x³', c: 'bg-slate-100' }, { l: '0', v: '0', c: 'bg-white border-slate-200 text-slate-900' }, { l: '.', v: '.', c: 'bg-white border-slate-200 text-slate-900' }
   ];
 
   return (
-    <div className="flex flex-col h-full bg-slate-50 rounded-3xl shadow-xl border border-slate-200 overflow-hidden max-w-6xl mx-auto">
+    <div className="flex flex-col h-full bg-white rounded-3xl shadow-xl border border-slate-200 overflow-hidden max-w-6xl mx-auto">
       
-      {/* Header / Tabs */}
-      <div className="bg-slate-100 p-2 flex gap-2 overflow-x-auto">
-        {['scientific', 'units', 'currency', 'physics'].map(m => (
-           <button 
-             key={m}
-             onClick={() => setMode(m as CalcMode)}
-             className={`flex-1 py-3 rounded-xl font-bold capitalize transition-all ${mode === m ? 'bg-indigo-600 text-white shadow-md' : 'bg-white text-slate-500 hover:text-indigo-600'}`}
-           >{m}</button>
-        ))}
+      {/* Navigation Tabs */}
+      <div className="bg-slate-50 p-2 border-b border-slate-200 flex gap-2 overflow-x-auto">
+        <TabButton active={mode === 'scientific'} onClick={() => setMode('scientific')} icon={CalcIcon} label="სამეცნიერო" />
+        <TabButton active={mode === 'units'} onClick={() => setMode('units')} icon={Scale} label="ერთეულები" />
+        <TabButton active={mode === 'currency'} onClick={() => setMode('currency')} icon={Coins} label="ვალუტა" />
+        <TabButton active={mode === 'physics'} onClick={() => setMode('physics')} icon={Zap} label="ფიზიკა" />
       </div>
 
-      <div className="flex-1 p-4 md:p-6 overflow-y-auto">
+      <div className="flex-1 p-4 md:p-8 overflow-y-auto bg-slate-50/50">
         
-        {/* === SCIENTIFIC CALCULATOR === */}
+        {/* 1. SCIENTIFIC CALCULATOR */}
         {mode === 'scientific' && (
           <div className="h-full flex flex-col lg:flex-row gap-6">
              <div className="flex-1 flex flex-col gap-4">
-                <div className="bg-slate-900 p-6 rounded-2xl text-right shadow-inner min-h-[120px] flex flex-col justify-end relative overflow-hidden">
-                  
-                  {/* DEG / RAD Switch */}
+                {/* Display Screen */}
+                <div className="bg-slate-900 p-6 rounded-2xl text-right shadow-xl min-h-[140px] flex flex-col justify-end relative overflow-hidden">
                   <div className="absolute top-4 left-4 flex bg-slate-800 rounded-lg p-1">
-                     <button 
-                       onClick={() => setIsRadians(false)} 
-                       className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${!isRadians ? 'bg-indigo-500 text-white' : 'text-slate-400 hover:text-white'}`}
-                     >DEG</button>
-                     <button 
-                       onClick={() => setIsRadians(true)} 
-                       className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${isRadians ? 'bg-indigo-500 text-white' : 'text-slate-400 hover:text-white'}`}
-                     >RAD</button>
+                     <button onClick={() => setIsRadians(false)} className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${!isRadians ? 'bg-indigo-500 text-white' : 'text-slate-400 hover:text-white'}`}>DEG</button>
+                     <button onClick={() => setIsRadians(true)} className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${isRadians ? 'bg-indigo-500 text-white' : 'text-slate-400 hover:text-white'}`}>RAD</button>
                   </div>
-
-                  <div className="text-slate-400 text-sm font-mono">{history[0] ? history[0].split('=')[0] : ''}</div>
-                  <div className="text-white text-4xl font-bold tracking-widest break-all font-mono">{display || '0'}</div>
-                  <div className="text-indigo-300 text-xl font-mono mt-2 h-8">{result}</div>
+                  <div className="text-slate-400 text-sm font-mono h-5">{history[0] ? history[0].split('=')[0] : ''}</div>
+                  <div className="text-white text-4xl font-bold tracking-widest break-all font-mono my-1">{display || '0'}</div>
+                  <div className="text-emerald-400 text-2xl font-mono h-8">{result}</div>
                 </div>
 
+                {/* Keypad */}
                 <div className="grid grid-cols-5 gap-2 md:gap-3 flex-1">
                    {sciButtons.map((btn) => (
                      <button 
                        key={btn.l} onClick={() => handleBtnClick(btn.v)} 
-                       className={`p-3 md:p-4 rounded-xl font-bold shadow-sm transition-all hover:brightness-95 active:scale-95 flex items-center justify-center ${btn.c}`}
+                       className={`p-3 md:p-4 rounded-xl font-bold shadow-sm border border-transparent transition-all active:scale-95 flex items-center justify-center text-lg ${btn.c}`}
                      >{btn.l}</button>
                    ))}
                 </div>
              </div>
+
              {/* History Panel */}
              <div className="w-full lg:w-72 bg-white border border-slate-200 rounded-2xl p-4 hidden lg:flex flex-col h-full shadow-sm">
-                <h3 className="font-bold text-slate-700 mb-4 border-b pb-2 flex justify-between">
-                   <span>ისტორია</span>
-                   <button onClick={() => setHistory([])}><Trash2 size={16} className="text-red-400 hover:text-red-600"/></button>
+                <h3 className="font-bold text-slate-700 mb-4 border-b pb-2 flex justify-between items-center">
+                   <span className="flex items-center gap-2"><History size={16}/> ისტორია</span>
+                   <button onClick={() => setHistory([])} className="p-1 hover:bg-red-50 text-red-400 rounded"><Trash2 size={16}/></button>
                 </h3>
                 <div className="space-y-2 overflow-y-auto pr-1 flex-1 custom-scrollbar">
+                   {history.length === 0 && <p className="text-slate-400 text-sm text-center mt-10">ისტორია ცარიელია</p>}
                    {history.map((h, i) => (
-                      <div key={i} className="text-right p-2 hover:bg-slate-50 rounded cursor-pointer border border-transparent hover:border-indigo-100" onClick={() => setDisplay(h.split('=')[0].trim())}>
-                         <div className="text-xs text-slate-400">{h.split('=')[0]}</div>
-                         <div className="font-mono text-indigo-600 font-bold">{h.split('=')[1]}</div>
+                      <div key={i} className="text-right p-3 hover:bg-indigo-50 rounded-xl cursor-pointer border border-slate-100 transition-colors" onClick={() => setDisplay(h.split('=')[0].trim())}>
+                         <div className="text-xs text-slate-500 mb-1">{h.split('=')[0]}</div>
+                         <div className="font-mono text-indigo-600 font-bold text-lg">{h.split('=')[1]}</div>
                       </div>
                    ))}
                 </div>
@@ -248,49 +242,129 @@ export const Calculator: React.FC = () => {
           </div>
         )}
 
-        {/* ... (Other modes kept same but simplified for brevity in this response) ... */}
-        {/* Units / Currency / Physics Rendering is identical to previous version, ensuring functionality remains. */}
-        {/* I am re-rendering the essential logic here to ensure it's not lost */}
-        
-        {mode !== 'scientific' && (
-           <div className="bg-white p-8 rounded-3xl shadow-md text-center">
-              {mode === 'units' && (
-                 <div className="space-y-4">
-                    <h2 className="text-2xl font-bold text-slate-800">ერთეულების გადაყვანა</h2>
-                    <div className="flex gap-2 justify-center mb-4">
-                       {['length','weight','time'].map(c => <button key={c} onClick={() => setConvCategory(c)} className={`px-4 py-2 rounded-lg ${convCategory === c ? 'bg-indigo-600 text-white' : 'bg-slate-100'}`}>{c}</button>)}
-                    </div>
-                    <div className="flex gap-4 items-center">
-                       <input type="number" value={convValue} onChange={e => setConvValue(e.target.value)} className="flex-1 p-3 border rounded-xl text-slate-900" />
-                       <select value={fromUnit} onChange={e => setFromUnit(e.target.value)} className="p-3 border rounded-xl text-slate-900">
-                          {Object.keys(conversionRates).map(u => <option key={u} value={u}>{u}</option>)}
-                       </select>
-                       <ArrowRight />
-                       <div className="flex-1 p-3 bg-indigo-50 border border-indigo-200 rounded-xl font-bold text-indigo-700">{convResult}</div>
-                    </div>
+        {/* 2. UNIT CONVERTER */}
+        {mode === 'units' && (
+           <div className="max-w-2xl mx-auto bg-white p-8 rounded-3xl shadow-sm border border-slate-200">
+              <h2 className="text-2xl font-bold text-slate-800 mb-6 flex items-center gap-2"><Scale className="text-indigo-600"/> ერთეულების გადაყვანა</h2>
+              
+              <div className="flex gap-2 mb-8 bg-slate-50 p-1 rounded-xl">
+                 {Object.entries(unitCategories).map(([key, val]) => (
+                    <button key={key} onClick={() => setConvCategory(key)} className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${convCategory === key ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-900'}`}>
+                       {val.label}
+                    </button>
+                 ))}
+              </div>
+
+              <div className="flex flex-col md:flex-row gap-4 items-center">
+                 <div className="flex-1 w-full">
+                    <label className="text-xs font-bold text-slate-400 uppercase mb-1 block">რაოდენობა</label>
+                    <input type="number" value={convValue} onChange={e => setConvValue(e.target.value)} className="w-full p-4 bg-white text-slate-900 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none font-mono text-lg" />
                  </div>
-              )}
-              {mode === 'physics' && (
-                 <div className="space-y-4">
-                    <h2 className="text-2xl font-bold text-slate-800">ფიზიკა</h2>
-                    <div className="flex flex-wrap gap-2 justify-center">
-                       {Object.keys(physicsFormulas).map(k => <button key={k} onClick={() => setPhysicsFormula(k)} className={`px-3 py-2 rounded-lg ${physicsFormula === k ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-700'}`}>{k}</button>)}
-                    </div>
-                    <div className="grid gap-4 mt-4">
-                       {Object.entries(physicsFormulas[physicsFormula as keyof typeof physicsFormulas].inputs).map(([k, l]) => (
-                          <div key={k} className="text-left">
-                             <label className="text-xs font-bold text-slate-500 uppercase">{l}</label>
-                             <input type="number" onChange={e => setPhysicsInputs({...physicsInputs, [k]: e.target.value})} className="w-full p-3 border rounded-xl text-slate-900" placeholder="0" />
-                          </div>
-                       ))}
-                       <button onClick={calculatePhysics} className="bg-indigo-600 text-white py-3 rounded-xl font-bold mt-2">გამოთვლა</button>
-                       {physicsResult && <div className="p-4 bg-green-50 text-green-700 font-bold rounded-xl text-xl">{physicsResult}</div>}
-                    </div>
+                 <div className="flex-1 w-full">
+                    <label className="text-xs font-bold text-slate-400 uppercase mb-1 block">საიდან</label>
+                    <select value={fromUnit} onChange={e => setFromUnit(e.target.value)} className="w-full p-4 bg-white text-slate-900 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none appearance-none">
+                       {unitCategories[convCategory as keyof typeof unitCategories].units.map(u => <option key={u} value={u}>{u}</option>)}
+                    </select>
+                 </div>
+                 <MoveRight className="text-slate-400 hidden md:block mt-6" />
+                 <div className="flex-1 w-full">
+                    <label className="text-xs font-bold text-slate-400 uppercase mb-1 block">სადამდე</label>
+                    <select value={toUnit} onChange={e => setToUnit(e.target.value)} className="w-full p-4 bg-white text-slate-900 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none appearance-none">
+                       {unitCategories[convCategory as keyof typeof unitCategories].units.map(u => <option key={u} value={u}>{u}</option>)}
+                    </select>
+                 </div>
+              </div>
+
+              <div className="mt-8 bg-indigo-50 p-6 rounded-2xl border border-indigo-100 text-center">
+                 <div className="text-sm text-indigo-400 font-bold uppercase tracking-wider mb-1">შედეგი</div>
+                 <div className="text-4xl font-bold text-indigo-700 font-mono">{convResult} <span className="text-lg text-indigo-400">{toUnit}</span></div>
+              </div>
+           </div>
+        )}
+
+        {/* 3. CURRENCY CONVERTER */}
+        {mode === 'currency' && (
+           <div className="max-w-2xl mx-auto bg-white p-8 rounded-3xl shadow-sm border border-slate-200">
+              <h2 className="text-2xl font-bold text-slate-800 mb-6 flex items-center gap-2"><DollarSign className="text-indigo-600"/> ვალუტის კურსი</h2>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end mb-6">
+                 <div className="flex-1">
+                    <label className="text-xs font-bold text-slate-400 uppercase mb-1 block">თანხა</label>
+                    <input type="number" value={currAmount} onChange={e => setCurrAmount(e.target.value)} className="w-full p-4 bg-white text-slate-900 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none font-mono text-lg" placeholder="0.00" />
+                 </div>
+                 <div className="flex-1">
+                    <label className="text-xs font-bold text-slate-400 uppercase mb-1 block">ვალუტა (დან)</label>
+                    <select value={currFrom} onChange={e => setCurrFrom(e.target.value)} className="w-full p-4 bg-white text-slate-900 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none cursor-pointer">
+                       {Object.keys(currencyRates).map(c => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                 </div>
+                 <div className="flex-1">
+                    <label className="text-xs font-bold text-slate-400 uppercase mb-1 block">ვალუტა (ში)</label>
+                    <select value={currTo} onChange={e => setCurrTo(e.target.value)} className="w-full p-4 bg-white text-slate-900 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none cursor-pointer">
+                       {Object.keys(currencyRates).map(c => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                 </div>
+              </div>
+
+              <div className="bg-emerald-50 p-8 rounded-3xl border border-emerald-100 text-center shadow-sm relative overflow-hidden">
+                 <div className="absolute top-0 right-0 p-10 opacity-10"><Coins size={100} className="text-emerald-600"/></div>
+                 <span className="text-emerald-600 font-bold text-sm uppercase tracking-widest">კონვერტაცია</span>
+                 <div className="text-5xl font-bold text-emerald-800 font-mono my-2">{currResult} <span className="text-2xl">{currTo}</span></div>
+                 <div className="text-emerald-500 text-sm font-medium">1 {currFrom} = {(currencyRates[currTo] / currencyRates[currFrom]).toFixed(4)} {currTo}</div>
+              </div>
+           </div>
+        )}
+
+        {/* 4. PHYSICS CALCULATOR */}
+        {mode === 'physics' && (
+           <div className="max-w-2xl mx-auto bg-white p-8 rounded-3xl shadow-sm border border-slate-200">
+              <h2 className="text-2xl font-bold text-slate-800 mb-6 flex items-center gap-2"><Zap className="text-indigo-600"/> ფიზიკის ფორმულები</h2>
+              
+              <div className="flex flex-wrap gap-2 justify-center mb-8">
+                 {Object.entries(physicsFormulas).map(([key, val]) => (
+                    <button key={key} onClick={() => { setPhysicsFormula(key); setPhysicsInputs({}); setPhysicsResult(null); }} className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${physicsFormula === key ? 'bg-indigo-600 text-white shadow-md' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
+                       {val.title.split(' ')[0]}
+                    </button>
+                 ))}
+              </div>
+
+              <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200">
+                 <h3 className="text-lg font-bold text-slate-800 mb-4 text-center">{physicsFormulas[physicsFormula as keyof typeof physicsFormulas].title}</h3>
+                 <div className="grid gap-4">
+                    {Object.entries(physicsFormulas[physicsFormula as keyof typeof physicsFormulas].inputs).map(([k, l]) => (
+                       <div key={k}>
+                          <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">{l}</label>
+                          <input 
+                            type="number" 
+                            onChange={e => setPhysicsInputs({...physicsInputs, [k]: e.target.value})} 
+                            className="w-full p-3 bg-white text-slate-900 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none" 
+                            placeholder="0" 
+                          />
+                       </div>
+                    ))}
+                    <button onClick={handlePhysicsCalc} className="mt-2 w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-md transition-all">გამოთვლა</button>
+                 </div>
+              </div>
+
+              {physicsResult && (
+                 <div className="mt-6 bg-white border-l-4 border-indigo-500 p-6 rounded-r-xl shadow-md flex items-center justify-between animate-fadeIn">
+                    <span className="font-bold text-slate-500">პასუხი:</span>
+                    <span className="text-3xl font-bold text-indigo-700 font-mono">{physicsResult}</span>
                  </div>
               )}
            </div>
         )}
+
       </div>
     </div>
   );
 };
+
+const TabButton = ({ active, onClick, icon: Icon, label }: any) => (
+  <button 
+    onClick={onClick}
+    className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition-all whitespace-nowrap ${active ? 'bg-indigo-600 text-white shadow-md' : 'bg-white text-slate-600 hover:bg-slate-100'}`}
+  >
+    <Icon size={18} /> {label}
+  </button>
+);
