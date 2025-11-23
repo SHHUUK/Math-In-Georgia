@@ -330,31 +330,55 @@ const App: React.FC = () => {
       {/* Main Content */}
       <main className="flex-1 h-[calc(100vh-64px)] md:h-screen overflow-hidden relative">
         {/* 
-           Render Strategy:
-           We use CSS rendering (display: none) for complex components like Whiteboard and Calculator 
-           to preserve their state (canvas drawings, calculator history) when switching tabs.
-           Other light views (Chat, Synopsis, etc.) are conditionally rendered.
+           Render Strategy: "KEEP-ALIVE"
+           We render ALL major components simultaneously but toggle their visibility using CSS classes.
+           This ensures React State (chat history, quiz progress, exam timer) is preserved when switching tabs.
         */}
         
-        {/* Persistent Whiteboard */}
-        <div className={`absolute inset-0 p-4 md:p-8 ${currentView === AppView.BOARD ? 'z-10' : 'z-0 invisible pointer-events-none'}`}>
+        {/* Persistent Whiteboard (Z-Index managed) */}
+        <div className={`absolute inset-0 p-4 md:p-8 ${currentView === AppView.BOARD ? 'z-10 block' : 'z-0 invisible pointer-events-none'}`}>
            <Whiteboard />
         </div>
 
-        {/* Persistent Calculator */}
-        <div className={`absolute inset-0 p-4 md:p-8 ${currentView === AppView.CALCULATOR ? 'z-10' : 'z-0 invisible pointer-events-none'}`}>
+        {/* Persistent Calculator (Z-Index managed) */}
+        <div className={`absolute inset-0 p-4 md:p-8 ${currentView === AppView.CALCULATOR ? 'z-10 block' : 'z-0 invisible pointer-events-none'}`}>
            <Calculator />
         </div>
 
-        {/* Other Views */}
-        <div className={`h-full w-full overflow-y-auto p-4 md:p-8 ${[AppView.BOARD, AppView.CALCULATOR].includes(currentView) ? 'hidden' : ''}`}>
-          <div className="max-w-7xl mx-auto h-full flex flex-col">
-            {currentView === AppView.SYNOPSIS && renderSynopsisContent()}
-            {currentView === AppView.CHAT && <ChatInterface />}
-            {currentView === AppView.VISION && <ImageAnalyzer />}
-            {currentView === AppView.QUIZ && <QuizInterface />}
-            {currentView === AppView.NATIONAL_EXAM && <NationalExam />}
-            {currentView === AppView.MOBILE_CONNECT && <MobileConnect onSimulateScan={handleMobileScan} />}
+        {/* Persistent View Container for Standard Components */}
+        <div className={`h-full w-full overflow-y-auto p-4 md:p-8 ${[AppView.BOARD, AppView.CALCULATOR].includes(currentView) ? 'hidden' : 'block'}`}>
+          <div className="max-w-7xl mx-auto h-full flex flex-col relative">
+            
+            {/* Synopsis */}
+            <div className={currentView === AppView.SYNOPSIS ? 'block' : 'hidden'}>
+              {renderSynopsisContent()}
+            </div>
+
+            {/* Chat Interface */}
+            <div className={currentView === AppView.CHAT ? 'block h-full' : 'hidden'}>
+              <ChatInterface />
+            </div>
+
+            {/* Vision/Image Analyzer */}
+            <div className={currentView === AppView.VISION ? 'block h-full' : 'hidden'}>
+              <ImageAnalyzer />
+            </div>
+
+            {/* Quiz Interface */}
+            <div className={currentView === AppView.QUIZ ? 'block h-full' : 'hidden'}>
+              <QuizInterface />
+            </div>
+
+            {/* National Exam */}
+            <div className={currentView === AppView.NATIONAL_EXAM ? 'block h-full' : 'hidden'}>
+              <NationalExam />
+            </div>
+
+            {/* Mobile Connect */}
+            <div className={currentView === AppView.MOBILE_CONNECT ? 'block h-full' : 'hidden'}>
+              <MobileConnect onSimulateScan={handleMobileScan} />
+            </div>
+
           </div>
         </div>
       </main>

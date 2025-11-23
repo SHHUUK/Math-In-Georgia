@@ -14,31 +14,36 @@ const getAiClient = () => {
 // --- Chat Service ---
 export const chatWithGemini = async (
   history: ChatMessage[], 
-  newMessage: string
+  newMessage: string,
+  base64Image?: string,
+  mimeType: string = 'image/png'
 ): Promise<string> => {
   const ai = getAiClient();
   if (!ai) return "Error: API Key not configured.";
 
   try {
-    const prompt = `
+    const promptText = `
       System: You are an expert mathematics tutor for Georgian students. 
       
-      **EXPLANATION STYLE (Feynman Technique):**
-      - Explain the logic fundamentally and simply, as if clarifying the "core truth" of the concept.
-      - **Tone:** Mature, professional, encouraging, and clear. DO NOT use a "baby voice" or talk down to the user. Avoid phrases like "Imagine you have 3 apples" unless it's a sophisticated analogy.
+      **EXPLANATION STYLE:**
+      - Explain the logic fundamentally and simply.
+      - **Tone:** Mature, professional, encouraging, and clear.
       - Focus on the "Why" and "How".
       
-      **STRICT FORMATTING RULES:**
-      1. **Language:** Georgian ONLY.
-      2. **NO LaTeX:** Do NOT use symbols like $\\mathbb{N}$, $\\frac{a}{b}$, or latex code blocks. 
-      3. **NO Markdown Headers:** Do NOT use ### or ##. Use **Bold Text** or • Bullet points (black dots) for structure.
-      4. **Math Symbols:** Use standard Unicode: x², √, ∛, π, °, ×, ÷, ≈, ≠, ≤, ≥, ∞, ∫, ∑, ∆.
-         - Instead of $\\mathbb{N}$, write "ნატურალური რიცხვები (N)".
-         - Instead of $\\in$, write "ეკუთვნის".
+      **CRITICAL FORMATTING RULES (NO LATEX):**
+      1. **ABSOLUTELY NO LATEX:** Do NOT use dollar signs ($) or LaTeX commands like \\frac, \\sqrt, \\cdot, \\mathbb.
+      2. **USE STANDARD VISUAL SYMBOLS:**
+         - **Fractions:** Write as "1/2", "2/7", "a/b". NEVER use \\frac{...}{...}.
+         - **Roots:** Use "√x", "∛x". NEVER use \\sqrt{...}.
+         - **Powers:** Use "x²", "x³", "x^n".
+         - **Multiplication:** Use "×" or "·".
+         - **Sets:** Use "N", "Z", "R" (or Unicode ℕ, ℤ, ℝ if available without LaTeX formatting).
+         - **Approximation:** "≈".
+      3. **Structure:** Use • Bullet points (black dots) for lists. Do NOT use Markdown headers (###).
       
       **REQUIRED OUTPUT STRUCTURE:**
-      1. **Explanation:** The answer to the user's question.
-      2. **Similar Practice Problem:** At the very end of your response, ALWAYS generate a similar math problem based on the context for the user to solve, labeled as "**მსგავსი სავარჯიშო:**".
+      1. **Explanation:** The answer to the user's question (in Georgian).
+      2. **Similar Practice Problem:** At the very end, generate a similar math problem labeled "**მსგავსი სავარჯიშო:**".
       
       Conversation History:
       ${history.map(h => `${h.role === ChatRole.USER ? 'User' : 'Model'}: ${h.text}`).join('\n')}
@@ -46,9 +51,25 @@ export const chatWithGemini = async (
       User: ${newMessage}
     `;
 
+    // Prepare contents array
+    const contents = [];
+    
+    // If image is provided, add it as the first part
+    if (base64Image) {
+      contents.push({
+        inlineData: {
+          mimeType: mimeType,
+          data: base64Image
+        }
+      });
+    }
+    
+    // Add text prompt
+    contents.push({ text: promptText });
+
     const response: GenerateContentResponse = await ai.models.generateContent({
       model: 'gemini-3-pro-preview',
-      contents: prompt,
+      contents: { parts: contents },
     });
 
     return response.text || "სამწუხაროდ, პასუხის გაცემა ვერ მოხერხდა.";
@@ -80,19 +101,17 @@ export const analyzeImageWithGemini = async (
           {
             text: `
               თქვენ ხართ გამოცდილი მათემატიკის მასწავლებელი.
-              გააანალიზეთ ფოტო და აუხსენით ამოცანა მარტივად (Feynman Technique).
+              გააანალიზეთ ფოტო და აუხსენით ამოცანა.
 
-              **სტილი და ტონი:**
-              - ახსენით საფუძვლიანად, მაგრამ არა ბავშვური ენით. იყავით სერიოზული დამხმარე.
-              - არ გამოიყენოთ "###" ჰედერები. გამოიყენეთ მუქი ტექსტი (**სათაური**).
-              - არ გამოიყენოთ LaTeX ($\frac{a}{b}$). გამოიყენეთ უნიკოდი (a/b, x²).
-              
-              **სტრუქტურა:**
-              1. **რა არის სურათზე?** (მოკლე აღწერა)
-              2. **საჭირო ფორმულა** (დაასახელეთ და ახსენით რატომ ვიყენებთ მას)
-              3. **ნაბიჯ-ნაბიჯ ამოხსნა** (გამოიყენეთ • ბულეტები)
-              4. **მარტივი ანალოგია** (რეალური ცხოვრების მაგალითი, სერიოზული კონტექსტით)
-              5. **საბოლოო პასუხი** (გამოყავით მკაფიოდ)
+              **სტილი და ფორმატი (მკაცრად):**
+              1. **აკრძალულია LaTeX ($):** არ გამოიყენოთ $\\frac{...}{...}$. გამოიყენეთ უბრალო ტექსტი: "1/2", "x²", "√x".
+              2. **სტრუქტურა:**
+                 • **რა არის სურათზე?** (მოკლე აღწერა)
+                 • **საჭირო ფორმულა**
+                 • **ნაბიჯ-ნაბიჯ ამოხსნა**
+                 • **ანალოგია** (მარტივი ცხოვრებისეული მაგალითი)
+                 • **საბოლოო პასუხი**
+              3. ენა: ქართული.
             `
           }
         ]
@@ -125,7 +144,7 @@ export const generateSimilarProblem = async (
       2. **Hint**: A small hint on which formula to use.
       3. **Answer (Hidden)**: Provide the correct answer at the very end, labeled "**სწორი პასუხი:**".
       
-      Formatting: No LaTeX, No ### headers. Use Unicode.
+      Formatting: **NO LaTeX ($)**. Use "1/2", "x²", "√". No markdown headers.
     `;
 
     const response = await ai.models.generateContent({
@@ -149,11 +168,15 @@ export const generateMathIllustration = async (
   if (!ai) return null;
 
   try {
+    // Refined prompt for abstract, flat math illustrations
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash-image',
       contents: {
         parts: [{
-          text: `Create a flat-style, minimalist, educational vector illustration representing the mathematical concept of "${topicTitle}". Context: ${topicExplanation}. Use vibrant, clean colors suitable for a modern study app. Do not include text in the image.`
+          text: `Generate a high-quality, abstract, flat-design educational illustration for the math concept: "${topicTitle}". 
+                 Description: ${topicExplanation}. 
+                 Style: Modern minimalist, geometric shapes, isometric view, using a palette of Indigo, Violet, and White. 
+                 Constraint: No text, no numbers, no letters inside the image. Clean background.`
         }]
       }
     });
@@ -185,19 +208,19 @@ export const generateQuiz = async (topic: string): Promise<QuizQuestion[]> => {
       Strictly Output JSON format ONLY. Do not add markdown code blocks.
       
       Rules:
-      - No LaTeX code (use x², √).
-      - No markdown headers (###).
-      - Explanations should be clear and mature.
+      - **NO LaTeX ($)**. Use plain text: "1/2", "x²", "√".
+      - No markdown headers.
+      - Explanations should be clear.
       
       Structure:
       [
         {
           "id": "q1",
-          "question": "Question text in Georgian",
+          "question": "Question text",
           "options": ["Option A", "Option B", "Option C", "Option D"],
-          "correctAnswerIndex": 0, // 0-3
-          "explanation": "Brief explanation in Georgian why this is correct",
-          "hint": "A small, subtle hint that guides the user without giving the answer" 
+          "correctAnswerIndex": 0,
+          "explanation": "Brief explanation",
+          "hint": "Small hint" 
         }
       ]
     `;
@@ -240,10 +263,9 @@ export const generateMockExam = async (): Promise<ExamQuestion[]> => {
       - Questions 36-40: Open-Ended (3 or 4 Points each). No options.
       
       Rules:
-      - NO Latex. Use Unicode for math (x², √, etc).
+      - **NO LaTeX ($)**. Use Unicode: "x²", "√", "1/2".
       - Covers Algebra, Geometry, Statistics, Trigonometry.
-      - Keep text concise to ensure the JSON fits in the response.
-      - DO NOT return empty arrays.
+      - Keep text concise.
       
       JSON Schema:
       [
@@ -253,7 +275,7 @@ export const generateMockExam = async (): Promise<ExamQuestion[]> => {
           "points": 1,
           "text": "Question text",
           "options": ["A", "B", "C", "D"],
-          "correctAnswer": "Index of correct option (0-3) as STRING"
+          "correctAnswer": "Index (0-3) as STRING"
         },
         ...
         {
@@ -300,20 +322,18 @@ export const gradeOpenEndedQuestion = async (
       You are a strict math exam grader.
       
       Question: "${questionText}"
-      Rubric/Correct Logic: "${rubric}"
+      Rubric: "${rubric}"
       Student Answer: "${userAnswer}"
       Max Points: ${maxPoints}
       
-      Evaluate the student's answer.
-      - If correct, give full points.
-      - If partially correct, give partial points.
-      - If wrong, give 0.
+      Evaluate the answer.
       - Feedback MUST be in Georgian.
+      - **NO LaTeX in feedback**.
       
       Output JSON ONLY:
       {
         "score": number,
-        "feedback": "Short feedback in Georgian explaining the grade"
+        "feedback": "Short feedback in Georgian"
       }
     `;
 
@@ -329,7 +349,6 @@ export const gradeOpenEndedQuestion = async (
     if (!text) return { score: 0, feedback: "Error: No response" };
     const result = JSON.parse(text.replace(/```json/g, '').replace(/```/g, '').trim());
     
-    // Validate response
     if (typeof result.score !== 'number') result.score = 0;
     if (result.score > maxPoints) result.score = maxPoints;
     

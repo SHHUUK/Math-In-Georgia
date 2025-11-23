@@ -1,6 +1,5 @@
 
-
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Upload, Image as ImageIcon, X, Loader2, CheckCircle, Bot, RefreshCcw, Lightbulb } from 'lucide-react';
 import { analyzeImageWithGemini, generateSimilarProblem } from '../services/geminiService';
 
@@ -12,6 +11,43 @@ export const ImageAnalyzer: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isGeneratingPractice, setIsGeneratingPractice] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Paste Event Listener
+  useEffect(() => {
+    const handlePaste = (e: ClipboardEvent) => {
+      // Check if clipboard has items
+      if (e.clipboardData && e.clipboardData.items) {
+        const items = e.clipboardData.items;
+        for (let i = 0; i < items.length; i++) {
+          // Find image item
+          if (items[i].type.indexOf('image') !== -1) {
+            e.preventDefault(); // Prevent default paste behavior
+            const blob = items[i].getAsFile();
+            if (blob) {
+              const reader = new FileReader();
+              reader.onloadend = () => {
+                const result = reader.result as string;
+                setSelectedImage(result);
+                setMimeType(blob.type);
+                setAnalysis(null); // Reset previous analysis
+                setPracticeProblem(null);
+              };
+              reader.readAsDataURL(blob);
+            }
+            break; // Only handle the first image found
+          }
+        }
+      }
+    };
+
+    // Attach event listener to document to catch paste anywhere in the component
+    document.addEventListener('paste', handlePaste);
+    
+    // Cleanup
+    return () => {
+      document.removeEventListener('paste', handlePaste);
+    };
+  }, []);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -72,7 +108,7 @@ export const ImageAnalyzer: React.FC = () => {
           ვიზუალური ანალიზი
         </h2>
         <p className="text-indigo-100 max-w-xl">
-          ატვირთეთ მათემატიკური ამოცანის ან ფორმულის ფოტო. Gemini აგიხსნით მას მარტივად (Feynman მეთოდით).
+          ატვირთეთ ან <strong>ჩააკოპირეთ (Ctrl+V)</strong> მათემატიკური ამოცანის ფოტო. Gemini აგიხსნით მას მარტივად.
         </p>
       </div>
 
@@ -115,7 +151,7 @@ export const ImageAnalyzer: React.FC = () => {
                 </div>
                 <div>
                   <p className="text-lg font-medium text-slate-700">ატვირთეთ ფოტო</p>
-                  <p className="text-sm text-slate-500 mt-1">PNG, JPG</p>
+                  <p className="text-sm text-slate-500 mt-1">PNG, JPG ან Paste (Ctrl+V)</p>
                 </div>
                 <button 
                   onClick={triggerUpload}

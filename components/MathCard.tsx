@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Copy, Check, BookOpen, ArrowRight, Wand2, Loader2 } from 'lucide-react';
 import { MathSubTopic } from '../types';
@@ -104,41 +105,42 @@ export const MathCard: React.FC<MathCardProps> = ({ topic, onClick }) => {
             onError={() => setImageError(true)}
           />
         ) : (
-          <div className="w-full h-full flex flex-col items-center justify-center opacity-30 text-white p-4 text-center gap-2">
-             <BookOpen size={48} />
+          <div className="w-full h-full flex flex-col items-center justify-center text-white p-4 text-center gap-2 relative overflow-hidden">
+             <div className="absolute inset-0 bg-black/10"></div>
+             <BookOpen size={48} className="opacity-30 mb-2" />
              <span className="text-sm font-medium opacity-80">ფოტო მიუწვდომელია</span>
           </div>
         )}
 
         {/* Image Overlay Gradient & Title */}
-        <div className="absolute inset-0 bg-gradient-to-t from-indigo-900/90 via-indigo-900/30 to-transparent flex items-end pointer-events-none">
+        <div className="absolute inset-0 bg-gradient-to-t from-indigo-900/90 via-indigo-900/30 to-transparent flex items-end pointer-events-none z-10">
           <div className="p-5 w-full">
             <h3 className="text-white font-bold text-xl drop-shadow-md tracking-wide transform group-hover:translate-x-1 transition-transform duration-300">{topic.title}</h3>
           </div>
         </div>
 
-        {/* Generation Button - Shows if no image or on hover if image exists to allow regeneration */}
-        <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-20">
-           <button 
-             onClick={handleGenerateImage}
-             disabled={isGenerating}
-             className="p-2 bg-black/30 hover:bg-black/50 backdrop-blur-md border border-white/20 rounded-full text-white transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-             title="AI ილუსტრაციის გენერირება"
-           >
-             {isGenerating ? <Loader2 size={16} className="animate-spin" /> : <Wand2 size={16} />}
-           </button>
-        </div>
-
         {/* Explicit Generate Button if Image Missing */}
-        {!showImage && !isGenerating && (
-          <div className="absolute inset-0 flex items-center justify-center z-10">
-            <button
-              onClick={handleGenerateImage}
-              className="flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm border border-white/40 rounded-full text-white font-semibold shadow-lg transition-all transform hover:scale-105"
-            >
-              <Wand2 size={16} />
-              <span>ილუსტრაციის შექმნა</span>
-            </button>
+        {!showImage && (
+          <div className={`absolute inset-0 flex flex-col items-center justify-center z-20 p-4 text-center transition-all duration-500 ${isGenerating ? 'bg-indigo-900/40 backdrop-blur-sm' : ''}`}>
+            {isGenerating ? (
+               <div className="flex flex-col items-center gap-2">
+                 <div className="relative">
+                   <div className="w-12 h-12 rounded-full border-4 border-white/30 animate-pulse"></div>
+                   <Loader2 size={24} className="text-white animate-spin absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
+                 </div>
+                 <span className="text-white font-bold text-sm tracking-wide drop-shadow-md">AI ილუსტრაციის შექმნა...</span>
+               </div>
+            ) : (
+              <button
+                onClick={handleGenerateImage}
+                className="group/btn flex flex-col items-center gap-2 p-3 rounded-2xl hover:bg-white/10 backdrop-blur-md border border-white/20 transition-all hover:scale-105"
+              >
+                <div className="p-3 bg-white/20 rounded-full text-white group-hover/btn:bg-white group-hover/btn:text-indigo-600 transition-colors shadow-lg border border-white/20">
+                  <Wand2 size={20} />
+                </div>
+                <span className="text-white font-semibold text-xs drop-shadow-md uppercase tracking-wider">ილუსტრაციის გენერირება</span>
+              </button>
+            )}
           </div>
         )}
       </div>

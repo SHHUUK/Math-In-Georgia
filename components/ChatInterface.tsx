@@ -1,5 +1,6 @@
+
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Bot, User, Loader2 } from 'lucide-react';
+import { Send, Bot, User, Loader2, Plus, Image as ImageIcon, X } from 'lucide-react';
 import { chatWithGemini } from '../services/geminiService';
 import { ChatMessage, ChatRole } from '../types';
 
@@ -9,6 +10,11 @@ export const ChatInterface: React.FC = () => {
   ]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  
+  // Image Upload State
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -19,17 +25,46 @@ export const ChatInterface: React.FC = () => {
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages]);
+  }, [messages, isTyping]); // Also scroll when typing status changes
+
+  const handleImageSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setSelectedImage(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+    // Reset input so same file can be selected again if needed
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const clearImage = () => {
+    setSelectedImage(null);
+  };
 
   const handleSend = async () => {
-    if (!input.trim()) return;
+    if (!input.trim() && !selectedImage) return;
 
-    const userMsg: ChatMessage = { role: ChatRole.USER, text: input };
+    // Prepare message content for UI
+    // Note: In a real app you might want to show the image in the chat history UI too
+    const userMsg: ChatMessage = { 
+      role: ChatRole.USER, 
+      text: input + (selectedImage ? ' [სურათი თანდართულია]' : '') 
+    };
+    
     setMessages(prev => [...prev, userMsg]);
     setInput('');
+    
+    // Store image temporarily for the API call, then clear it
+    const imageToSend = selectedImage ? selectedImage.split(',')[1] : undefined;
+    const mimeType = selectedImage ? selectedImage.substring(selectedImage.indexOf(':') + 1, selectedImage.indexOf(';')) : undefined;
+    
+    setSelectedImage(null); // Clear preview immediately
     setIsTyping(true);
 
-    const responseText = await chatWithGemini(messages, input);
+    const responseText = await chatWithGemini(messages, input, imageToSend, mimeType);
     
     const botMsg: ChatMessage = { role: ChatRole.MODEL, text: responseText };
     setMessages(prev => [...prev, botMsg]);
@@ -87,21 +122,56 @@ export const ChatInterface: React.FC = () => {
         <div ref={scrollRef} />
       </div>
 
-      {/* Input */}
+      {/* Input Area */}
       <div className="p-4 bg-white border-t border-slate-200">
-        <div className="flex gap-2">
+        {/* Image Preview */}
+        {selectedImage && (
+          <div className="mb-3 relative inline-block animate-in slide-in-from-bottom-2">
+            <img 
+              src={selectedImage} 
+              alt="Selected" 
+              className="h-20 w-auto rounded-lg border border-slate-200 shadow-sm"
+            />
+            <button 
+              onClick={clearImage}
+              className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 shadow-md transition-colors"
+            >
+              <X size={12} />
+            </button>
+          </div>
+        )}
+
+        <div className="flex gap-2 items-end">
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleImageSelect}
+            accept="image/*"
+            className="hidden"
+          />
+          
+          {/* Plus/Image Button */}
+          <button 
+            onClick={() => fileInputRef.current?.click()}
+            className="mb-1 p-3 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all"
+            title="სურათის ატვირთვა"
+          >
+            <Plus size={24} />
+          </button>
+
           <input
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="დასვი კითხვა მათემატიკაზე..."
-            className="flex-1 bg-slate-50 border border-slate-200 text-slate-700 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all"
+            placeholder={selectedImage ? "დაამატე კომენტარი სურათზე..." : "დასვი კითხვა მათემატიკაზე..."}
+            className="flex-1 bg-slate-50 border border-slate-200 text-slate-700 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all"
           />
+          
           <button 
             onClick={handleSend}
-            disabled={isTyping || !input.trim()}
-            className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 text-white rounded-lg p-3 transition-colors shadow-md"
+            disabled={isTyping || (!input.trim() && !selectedImage)}
+            className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white rounded-xl p-3 transition-all shadow-md hover:scale-105 active:scale-95 mb-1"
           >
             <Send size={20} />
           </button>

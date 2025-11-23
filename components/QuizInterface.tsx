@@ -1,9 +1,10 @@
 
-import React, { useState } from 'react';
-import { ClipboardList, CheckCircle2, XCircle, Loader2, ArrowRight, RotateCcw, Trophy, History, Clock, Lightbulb } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { ClipboardList, CheckCircle2, XCircle, Loader2, ArrowRight, RotateCcw, Trophy, History, Clock, Lightbulb, Star, PlusCircle } from 'lucide-react';
 import { mathTopics } from '../data/mathContent';
 import { generateQuiz } from '../services/geminiService';
 import { QuizQuestion, QuizResult } from '../types';
+import { MathRenderer } from './MathRenderer';
 
 export const QuizInterface: React.FC = () => {
   const [viewMode, setViewMode] = useState<'topic_select' | 'quiz' | 'results' | 'history'>('topic_select');
@@ -12,6 +13,7 @@ export const QuizInterface: React.FC = () => {
   const [activeTopic, setActiveTopic] = useState<string | null>(null);
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [score, setScore] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
@@ -21,6 +23,25 @@ export const QuizInterface: React.FC = () => {
   // History State
   const [quizHistory, setQuizHistory] = useState<QuizResult[]>([]);
 
+  // Load History from LocalStorage on Mount
+  useEffect(() => {
+    const savedHistory = localStorage.getItem('mathmaster_quiz_history');
+    if (savedHistory) {
+      try {
+        setQuizHistory(JSON.parse(savedHistory));
+      } catch (e) {
+        console.error("Failed to parse history", e);
+      }
+    }
+  }, []);
+
+  // Save History to LocalStorage whenever it changes
+  useEffect(() => {
+    if (quizHistory.length > 0) {
+      localStorage.setItem('mathmaster_quiz_history', JSON.stringify(quizHistory));
+    }
+  }, [quizHistory]);
+
   const startQuiz = async (topicId: string, topicTitle: string) => {
     setActiveTopic(topicTitle);
     setLoading(true);
@@ -28,10 +49,36 @@ export const QuizInterface: React.FC = () => {
     setQuestions([]);
     setCurrentQuestionIndex(0);
     setScore(0);
+    setSelectedAnswer(null);
+    setIsAnswerChecked(false);
+    setShowHint(false);
 
     const generatedQuestions = await generateQuiz(topicTitle);
     setQuestions(generatedQuestions);
     setLoading(false);
+  };
+
+  const loadMoreQuestions = async () => {
+    if (!activeTopic) return;
+    setLoadingMore(true);
+    
+    // Generate new batch
+    const newQuestions = await generateQuiz(activeTopic);
+    
+    // Append to existing questions
+    setQuestions(prev => [...prev, ...newQuestions]);
+    
+    // Move to the first new question
+    setCurrentQuestionIndex(questions.length); // Index of the first new question
+    
+    // Reset question state
+    setSelectedAnswer(null);
+    setIsAnswerChecked(false);
+    setShowHint(false);
+    
+    // Return to quiz view
+    setViewMode('quiz');
+    setLoadingMore(false);
   };
 
   const handleAnswerSelect = (index: number) => {
@@ -64,17 +111,15 @@ export const QuizInterface: React.FC = () => {
   const finishQuiz = () => {
     setViewMode('results');
     // Add to history
+    // Note: score is state, so it's up to date here because checkAnswer happened previously
+    
     const newResult: QuizResult = {
       id: Date.now().toString(),
       topic: activeTopic || 'Unknown',
-      score: score + (selectedAnswer === questions[currentQuestionIndex].correctAnswerIndex ? 1 : 0), // Add last point if correct
+      score: score, 
       total: questions.length,
       date: new Date().toLocaleString('ka-GE', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
     };
-    
-    // Recalculate final score for display consistency
-    const finalScore = newResult.score;
-    setScore(finalScore);
     
     setQuizHistory(prev => [newResult, ...prev]);
   };
@@ -88,6 +133,17 @@ export const QuizInterface: React.FC = () => {
     setSelectedAnswer(null);
     setIsAnswerChecked(false);
     setShowHint(false);
+  };
+
+  const getBestScoreForTopic = (topicTitle: string) => {
+    const attempts = quizHistory.filter(h => h.topic === topicTitle);
+    if (attempts.length === 0) return null;
+    // Find best percentage
+    return attempts.reduce((best, current) => {
+      const currentPct = current.score / current.total;
+      const bestPct = best.score / best.total;
+      return currentPct > bestPct ? current : best;
+    });
   };
 
   // --- RENDER: LOADING ---
@@ -111,8 +167,8 @@ export const QuizInterface: React.FC = () => {
     const percentage = Math.round((score / questions.length) * 100);
     
     return (
-      <div className="flex flex-col items-center justify-center h-full max-w-2xl mx-auto animate-fadeIn text-center">
-        <div className="bg-white p-10 rounded-3xl shadow-lg border border-slate-200 w-full">
+      <div className="flex flex-col items-center justify-center h-full max-w-2xl mx-auto animate-fadeIn text-center p-4">
+        <div className="bg-white p-8 md:p-10 rounded-3xl shadow-lg border border-slate-200 w-full max-h-[80vh] overflow-y-auto custom-scrollbar">
           <div className="w-24 h-24 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-6">
             <Trophy size={48} className="text-yellow-600" />
           </div>
@@ -131,20 +187,31 @@ export const QuizInterface: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex gap-3">
+          <div className="flex flex-col gap-3">
              <button 
-              onClick={() => setViewMode('history')}
-              className="flex-1 py-4 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold transition-all"
-            >
-              ისტორია
-            </button>
-            <button 
-              onClick={resetQuiz}
-              className="flex-[2] flex items-center justify-center gap-2 py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold transition-all shadow-md hover:shadow-lg"
-            >
-              <RotateCcw size={20} />
-              სხვა ტესტის გავლა
-            </button>
+                onClick={loadMoreQuestions}
+                disabled={loadingMore}
+                className="w-full py-3 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-indigo-700 rounded-xl font-bold transition-all flex items-center justify-center gap-2 mb-2"
+             >
+                {loadingMore ? <Loader2 className="animate-spin" size={20} /> : <PlusCircle size={20} />}
+                კიდევ 5 კითხვის დამატება
+             </button>
+
+             <div className="flex gap-3">
+               <button 
+                onClick={() => setViewMode('history')}
+                className="flex-1 py-4 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold transition-all"
+              >
+                ისტორია
+              </button>
+              <button 
+                onClick={resetQuiz}
+                className="flex-[2] flex items-center justify-center gap-2 py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold transition-all shadow-md hover:shadow-lg"
+              >
+                <RotateCcw size={20} />
+                სხვა ტესტის გავლა
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -157,9 +224,9 @@ export const QuizInterface: React.FC = () => {
     const progress = ((currentQuestionIndex + 1) / questions.length) * 100;
 
     return (
-      <div className="max-w-3xl mx-auto h-full flex flex-col animate-fadeIn">
+      <div className="max-w-3xl mx-auto h-full flex flex-col animate-fadeIn p-4">
         {/* Progress Header */}
-        <div className="mb-8">
+        <div className="mb-6 md:mb-8">
           <div className="flex justify-between items-end mb-2">
             <span className="text-sm font-bold text-indigo-600 uppercase tracking-wider">კითხვა {currentQuestionIndex + 1} / {questions.length}</span>
             <span className="text-xs text-slate-400 font-mono">{activeTopic}</span>
@@ -173,13 +240,13 @@ export const QuizInterface: React.FC = () => {
         </div>
 
         {/* Question Card */}
-        <div className="flex-1 flex flex-col">
-          <h2 className="text-2xl md:text-3xl font-bold text-slate-900 mb-4 leading-snug">
-            {currentQ.question}
+        <div className="flex-1 flex flex-col overflow-y-auto pb-4 custom-scrollbar">
+          <h2 className="text-xl md:text-3xl font-bold text-slate-900 mb-4 leading-snug">
+            <MathRenderer text={currentQ.question} />
           </h2>
 
           {/* Hint Section */}
-          <div className="mb-6 h-10">
+          <div className="mb-6 min-h-[40px]">
             {!isAnswerChecked && currentQ.hint && (
               <div className="flex items-center">
                 {!showHint ? (
@@ -193,7 +260,7 @@ export const QuizInterface: React.FC = () => {
                 ) : (
                   <div className="flex items-center gap-2 text-amber-700 text-sm bg-amber-50 px-3 py-2 rounded-lg border border-amber-100 animate-fadeIn">
                     <Lightbulb size={16} className="shrink-0" />
-                    <span>{currentQ.hint}</span>
+                    <span><MathRenderer text={currentQ.hint} /></span>
                   </div>
                 )}
               </div>
@@ -231,10 +298,10 @@ export const QuizInterface: React.FC = () => {
                   key={idx}
                   onClick={() => handleAnswerSelect(idx)}
                   disabled={isAnswerChecked}
-                  className={`w-full p-5 rounded-xl border-2 text-left transition-all duration-200 flex justify-between items-center group ${borderClass} ${bgClass}`}
+                  className={`w-full p-4 md:p-5 rounded-xl border-2 text-left transition-all duration-200 flex justify-between items-center group ${borderClass} ${bgClass}`}
                 >
                   <span className={`text-lg font-medium ${isAnswerChecked && isCorrect ? 'text-green-800' : 'text-slate-700'}`}>
-                    {option}
+                    <MathRenderer text={option} />
                   </span>
                   {icon}
                 </button>
@@ -251,7 +318,9 @@ export const QuizInterface: React.FC = () => {
                 </div>
                 განმარტება
               </h4>
-              <p className="text-slate-600 leading-relaxed">{currentQ.explanation}</p>
+              <div className="text-slate-600 leading-relaxed">
+                <MathRenderer text={currentQ.explanation} />
+              </div>
             </div>
           )}
 
@@ -283,7 +352,7 @@ export const QuizInterface: React.FC = () => {
   // --- RENDER: HISTORY VIEW ---
   if (viewMode === 'history') {
     return (
-      <div className="space-y-6 animate-fadeIn max-w-4xl mx-auto">
+      <div className="space-y-6 animate-fadeIn max-w-4xl mx-auto p-4">
          <div className="flex items-center justify-between">
             <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
                <History className="text-indigo-600" />
@@ -337,7 +406,7 @@ export const QuizInterface: React.FC = () => {
 
   // --- RENDER: TOPIC SELECT (DEFAULT) ---
   return (
-    <div className="space-y-8 animate-fadeIn">
+    <div className="space-y-8 animate-fadeIn p-4">
       <div className="bg-gradient-to-r from-violet-600 to-fuchsia-600 rounded-3xl p-8 text-white shadow-lg relative overflow-hidden">
          <div className="relative z-10 flex justify-between items-center">
            <div>
@@ -376,20 +445,34 @@ export const QuizInterface: React.FC = () => {
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {mathTopics.map((topic) => (
-          <button
-            key={topic.id}
-            onClick={() => startQuiz(topic.id, topic.title)}
-            className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-violet-300 hover:-translate-y-1 transition-all duration-300 text-left group"
-          >
-            <h3 className="text-lg font-bold text-slate-800 group-hover:text-violet-700 transition-colors mb-1">
-              {topic.title}
-            </h3>
-            <p className="text-sm text-slate-500">
-              5 კითხვა • AI გენერაცია
-            </p>
-          </button>
-        ))}
+        {mathTopics.map((topic) => {
+          const best = getBestScoreForTopic(topic.title);
+          return (
+            <button
+              key={topic.id}
+              onClick={() => startQuiz(topic.id, topic.title)}
+              className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-violet-300 hover:-translate-y-1 transition-all duration-300 text-left group relative overflow-hidden"
+            >
+              <div className="relative z-10">
+                <div className="flex justify-between items-start">
+                   <h3 className="text-lg font-bold text-slate-800 group-hover:text-violet-700 transition-colors mb-1">
+                     {topic.title}
+                   </h3>
+                   {best && (
+                     <div className="flex items-center gap-1 bg-green-50 text-green-600 px-2 py-0.5 rounded-md text-xs font-bold border border-green-100" title="საუკეთესო შედეგი">
+                        <Star size={12} fill="currentColor" />
+                        {best.score}/{best.total}
+                     </div>
+                   )}
+                </div>
+                <p className="text-sm text-slate-500">
+                  5 კითხვა • AI გენერაცია
+                </p>
+              </div>
+              {best && <div className="absolute bottom-0 left-0 h-1 bg-green-500" style={{ width: `${(best.score/best.total)*100}%` }}></div>}
+            </button>
+          );
+        })}
       </div>
     </div>
   );
