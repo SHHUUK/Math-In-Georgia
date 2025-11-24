@@ -467,3 +467,40 @@ export const solveGeometryProblem = async (problemText: string, base64Image?: st
     return null;
   }
 };
+
+// --- Function Machine Service ---
+export const processFunctionStepByStep = async (func: string, val: string): Promise<{result: string, steps: string[]}> => {
+  const ai = getAiClient();
+  if (!ai) return { result: "Error", steps: [] };
+
+  try {
+    const prompt = `
+      Evaluate the function "${func}" for x = ${val}.
+      
+      Provide a step-by-step breakdown of the calculation procedure.
+      Language: Georgian.
+      
+      **FORMATTING RULES:**
+      - Strictly Unicode math (x², 3·5, 1/2). No LaTeX.
+      
+      Output JSON ONLY:
+      {
+        "result": "Final Answer (string)",
+        "steps": ["Step 1 description", "Step 2 description", "Step 3 description"]
+      }
+    `;
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-pro-preview',
+      contents: prompt,
+      config: { responseMimeType: "application/json" }
+    });
+
+    const text = response.text;
+    if (!text) return { result: "Error", steps: [] };
+    return JSON.parse(text.replace(/```json/g, '').replace(/```/g, '').trim());
+  } catch (error) {
+    console.error("Function Machine Error:", error);
+    return { result: "Error", steps: ["ვერ მოხერხდა გამოთვლა."] };
+  }
+};

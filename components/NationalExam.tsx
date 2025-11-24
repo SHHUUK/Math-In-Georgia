@@ -8,7 +8,11 @@ import { generateMockExam, gradeOpenEndedQuestion } from '../services/geminiServ
 import { ExamQuestion, ExamResult } from '../types';
 import { MathRenderer } from './MathRenderer';
 
-export const NationalExam: React.FC = () => {
+interface NationalExamProps {
+  onAddXp?: (amount: number, reason?: string) => void;
+}
+
+export const NationalExam: React.FC<NationalExamProps> = ({ onAddXp }) => {
   const [gameState, setGameState] = useState<'intro' | 'loading' | 'active' | 'submitting' | 'results'>('intro');
   const [questions, setQuestions] = useState<ExamQuestion[]>([]);
   const [currentQIndex, setCurrentQIndex] = useState(0);
@@ -142,6 +146,14 @@ export const NationalExam: React.FC = () => {
 
       setResult({ totalScore, maxScore, details });
       setGameState('results');
+      
+      // GAMIFICATION: Large XP reward for Exam
+      if (onAddXp) {
+         onAddXp(200, 'ეროვნული გამოცდის დასრულება');
+         if (totalScore >= 11) {
+            setTimeout(() => onAddXp(100, 'ბარიერის გადალახვა!'), 1000);
+         }
+      }
 
     } catch (error) {
       console.error("Exam submission failed", error);

@@ -6,7 +6,11 @@ import { generateQuiz } from '../services/geminiService';
 import { QuizQuestion, QuizResult } from '../types';
 import { MathRenderer } from './MathRenderer';
 
-export const QuizInterface: React.FC = () => {
+interface QuizInterfaceProps {
+  onAddXp?: (amount: number, reason?: string) => void;
+}
+
+export const QuizInterface: React.FC<QuizInterfaceProps> = ({ onAddXp }) => {
   const [viewMode, setViewMode] = useState<'topic_select' | 'quiz' | 'results' | 'history'>('topic_select');
   const [activeTopic, setActiveTopic] = useState<string | null>(null);
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
@@ -100,6 +104,14 @@ export const QuizInterface: React.FC = () => {
       date: new Date().toLocaleString('ka-GE', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
     };
     setQuizHistory(prev => [newResult, ...prev]);
+    
+    // GAMIFICATION: Award XP
+    if (onAddXp) {
+       onAddXp(50, 'ტესტის დასრულება');
+       if (score === questions.length) {
+          setTimeout(() => onAddXp(50, '100% შედეგი!'), 1000);
+       }
+    }
   };
 
   const resetQuiz = () => {

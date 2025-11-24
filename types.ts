@@ -42,7 +42,14 @@ export enum AppView {
   CALCULATOR = 'calculator',
   MOBILE_CONNECT = 'mobile_connect',
   NATIONAL_EXAM = 'national_exam',
-  GEOMETRY = 'geometry'
+  GEOMETRY = 'geometry',
+  FUNCTION_MACHINE = 'function_machine',
+  PYTHAGORAS_MACHINE = 'pythagoras_machine',
+  UNIT_CIRCLE_MACHINE = 'unit_circle_machine',
+  TRIANGLE_MACHINE = 'triangle_machine',
+  NUMBER_MACHINE = 'number_machine',
+  STATS_MACHINE = 'stats_machine',
+  QUOTES_GALLERY = 'quotes_gallery'
 }
 
 export interface QuizQuestion {
@@ -84,4 +91,24 @@ export interface ExamResult {
     maxPoints: number;
     feedback?: string;
   }[];
+}
+
+// --- GAMIFICATION TYPES ---
+
+export interface Achievement {
+  id: string;
+  title: string;
+  description: string;
+  icon: string; // Lucide icon name
+  unlocked: boolean;
+  unlockedAt?: string;
+}
+
+export interface UserProfile {
+  level: number;
+  currentXp: number;
+  nextLevelXp: number;
+  streakDays: number;
+  lastActiveDate: string; // ISO Date string
+  achievements: Achievement[];
 }

@@ -1,10 +1,15 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Bot, User, Loader2, Plus, Image as ImageIcon, X } from 'lucide-react';
 import { chatWithGemini } from '../services/geminiService';
 import { ChatMessage, ChatRole } from '../types';
 import { MathRenderer } from './MathRenderer';
 
-export const ChatInterface: React.FC = () => {
+interface ChatInterfaceProps {
+  onAddXp?: (amount: number, reason?: string) => void;
+}
+
+export const ChatInterface: React.FC<ChatInterfaceProps> = ({ onAddXp }) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -71,6 +76,9 @@ export const ChatInterface: React.FC = () => {
     
     setMessages(prev => [...prev, userMsg]);
     setInput('');
+    
+    // GAMIFICATION: XP for asking
+    if (onAddXp) onAddXp(10, 'დასვი კითხვა');
     
     const imageToSend = selectedImage ? selectedImage.split(',')[1] : undefined;
     const mimeType = selectedImage ? selectedImage.substring(selectedImage.indexOf(':') + 1, selectedImage.indexOf(';')) : undefined;

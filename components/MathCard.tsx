@@ -150,8 +150,9 @@ export const MathCard: React.FC<MathCardProps> = ({ topic, onClick }) => {
       <div className="p-6 flex-1 flex flex-col gap-4">
         {topic.formula && (
           <div className="relative group/formula">
-            <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 group-hover:border-indigo-200 group-hover:shadow-sm transition-all duration-300 font-mono text-indigo-800 text-sm md:text-base overflow-x-auto math-formula shadow-inner pr-10">
-              <pre className="whitespace-pre-wrap font-bold font-mono font-feature-settings-tnum">{displayFormula}</pre>
+            <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 group-hover:border-indigo-200 group-hover:shadow-sm transition-all duration-300 font-mono text-indigo-800 overflow-x-auto math-formula shadow-inner pr-10">
+              {/* Increased font size here */}
+              <pre className="whitespace-pre-wrap font-bold font-mono font-feature-settings-tnum text-xl md:text-2xl">{displayFormula}</pre>
             </div>
             <button
               onClick={handleCopy}

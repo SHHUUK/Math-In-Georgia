@@ -1,9 +1,14 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Upload, Image as ImageIcon, X, Loader2, CheckCircle, Bot, RefreshCcw, Lightbulb } from 'lucide-react';
 import { analyzeImageWithGemini, generateSimilarProblem } from '../services/geminiService';
 import { MathRenderer } from './MathRenderer';
 
-export const ImageAnalyzer: React.FC = () => {
+interface ImageAnalyzerProps {
+  onAddXp?: (amount: number, reason?: string) => void;
+}
+
+export const ImageAnalyzer: React.FC<ImageAnalyzerProps> = ({ onAddXp }) => {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [mimeType, setMimeType] = useState<string>('');
   const [analysis, setAnalysis] = useState<string | null>(null);
@@ -73,6 +78,9 @@ export const ImageAnalyzer: React.FC = () => {
     const result = await analyzeImageWithGemini(base64Data, mimeType);
     setAnalysis(result);
     setIsLoading(false);
+    
+    // GAMIFICATION: Award XP
+    if (onAddXp) onAddXp(30, 'ფოტოს ანალიზი');
   };
 
   const handleGeneratePractice = async () => {

@@ -7,7 +7,11 @@ import {
 import { solveGeometryProblem, GeoSolution } from '../services/geminiService';
 import { MathRenderer } from './MathRenderer';
 
-export const GeometryVisualizer: React.FC = () => {
+interface GeometryVisualizerProps {
+  onAddXp?: (amount: number, reason?: string) => void;
+}
+
+export const GeometryVisualizer: React.FC<GeometryVisualizerProps> = ({ onAddXp }) => {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [data, setData] = useState<GeoSolution | null>(null);
@@ -130,6 +134,8 @@ export const GeometryVisualizer: React.FC = () => {
     const result = await solveGeometryProblem(input, imgData);
     if (result) {
       setData(result);
+      // GAMIFICATION: Award XP
+      if (onAddXp) onAddXp(20, 'გეომეტრიული ამოცანის ამოხსნა');
     }
     setIsLoading(false);
   };

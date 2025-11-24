@@ -1,16 +1,15 @@
 
-
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   BookOpen, MessageCircle, Camera, Menu, X, 
   Calculator as CalculatorIcon, Layers, Triangle, Grid, Activity, 
   TrendingUp, ArrowUpRight, List, BarChart, Zap,
   Infinity as InfinityIcon, ArrowLeft, ChevronRight, Lightbulb, Brain, PenTool,
   Divide, ClipboardList, Presentation, Smartphone, FileText, Sparkles, Rocket,
-  PencilRuler
+  PencilRuler, Award, Crown, Flame, Bell, Cog, BoxSelect, Circle, Triangle as TriangleIcon,
+  Hash, Quote
 } from 'lucide-react';
-import { AppView, MathSubTopic } from './types';
+import { AppView, MathSubTopic, UserProfile, Achievement } from './types';
 import { mathTopics } from './data/mathContent';
 import { MathCard } from './components/MathCard';
 import { ChatInterface } from './components/ChatInterface';
@@ -21,11 +20,31 @@ import { Calculator } from './components/Calculator';
 import { MobileConnect } from './components/MobileConnect';
 import { NationalExam } from './components/NationalExam';
 import { GeometryVisualizer } from './components/GeometryVisualizer';
+import { FunctionMachine } from './components/FunctionMachine';
+import { PythagorasMachine } from './components/PythagorasMachine';
+import { UnitCircleMachine } from './components/UnitCircleMachine';
+import { TriangleMachine } from './components/TriangleMachine';
+import { NumberMachine } from './components/NumberMachine';
+import { StatsMachine } from './components/StatsMachine';
+import { QuotesGallery } from './components/QuotesGallery';
 
 const iconMap: Record<string, React.ElementType> = {
   Calculator: CalculatorIcon, Layers, Triangle, Grid, Activity,
   TrendingUp, ArrowUpRight, List, BarChart, Zap,
   BookOpen, Infinity: InfinityIcon, Divide
+};
+
+const INITIAL_PROFILE: UserProfile = {
+  level: 1,
+  currentXp: 0,
+  nextLevelXp: 500,
+  streakDays: 1,
+  lastActiveDate: new Date().toISOString().split('T')[0],
+  achievements: [
+    { id: 'first_step', title: 'პირველი ნაბიჯი', description: 'დაიწყე სწავლა', icon: 'Flag', unlocked: true, unlockedAt: new Date().toISOString() },
+    { id: 'quiz_master', title: 'ტესტების ოსტატი', description: 'დაასრულე 5 ტესტი', icon: 'Trophy', unlocked: false },
+    { id: 'math_wizard', title: 'მათემატიკის ჯადოქარი', description: 'მიაღწიე მე-5 ლეველს', icon: 'Crown', unlocked: false },
+  ]
 };
 
 const App: React.FC = () => {
@@ -34,6 +53,91 @@ const App: React.FC = () => {
   const [selectedSubTopicId, setSelectedSubTopicId] = useState<string | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [mobileImage, setMobileImage] = useState<string | null>(null);
+  
+  // Gamification State
+  const [userProfile, setUserProfile] = useState<UserProfile>(INITIAL_PROFILE);
+  const [notification, setNotification] = useState<{title: string, message: string, type: 'xp' | 'achievement' | 'level'} | null>(null);
+
+  // Load Profile
+  useEffect(() => {
+    const savedProfile = localStorage.getItem('mathmaster_profile');
+    if (savedProfile) {
+      try {
+        const parsed = JSON.parse(savedProfile);
+        // Check streak
+        const today = new Date().toISOString().split('T')[0];
+        if (parsed.lastActiveDate !== today) {
+           const lastDate = new Date(parsed.lastActiveDate);
+           const currDate = new Date();
+           const diffTime = Math.abs(currDate.getTime() - lastDate.getTime());
+           const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+           
+           if (diffDays <= 2) {
+             parsed.streakDays += 1;
+           } else {
+             parsed.streakDays = 1;
+           }
+           parsed.lastActiveDate = today;
+        }
+        setUserProfile(parsed);
+      } catch (e) {
+        console.error("Profile parse error", e);
+      }
+    }
+  }, []);
+
+  // Save Profile
+  useEffect(() => {
+    localStorage.setItem('mathmaster_profile', JSON.stringify(userProfile));
+  }, [userProfile]);
+
+  // Clear Notification after 3 seconds
+  useEffect(() => {
+    if (notification) {
+      const timer = setTimeout(() => setNotification(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [notification]);
+
+  const addXp = useCallback((amount: number, reason?: string) => {
+    setUserProfile(prev => {
+      let newXp = prev.currentXp + amount;
+      let newLevel = prev.level;
+      let newNextLevelXp = prev.nextLevelXp;
+      let leveledUp = false;
+
+      // Level Up Logic
+      if (newXp >= prev.nextLevelXp) {
+        newLevel += 1;
+        newXp = newXp - prev.nextLevelXp;
+        newNextLevelXp = Math.floor(prev.nextLevelXp * 1.2); // Increase difficulty
+        leveledUp = true;
+      }
+
+      // Check Achievements (Basic Example)
+      const updatedAchievements = prev.achievements.map(a => {
+        if (a.id === 'math_wizard' && !a.unlocked && newLevel >= 5) {
+           setNotification({ title: 'მიღწევა განბლოკილია!', message: 'მათემატიკის ჯადოქარი', type: 'achievement' });
+           return { ...a, unlocked: true, unlockedAt: new Date().toISOString() };
+        }
+        return a;
+      });
+
+      if (leveledUp) {
+        setNotification({ title: 'გილოცავთ! ლეველი მოიმატა', message: `თქვენ გადახვედით ლეველზე: ${newLevel}`, type: 'level' });
+      } else {
+        setNotification({ title: `+${amount} XP`, message: reason || 'კარგი ნამუშევარია!', type: 'xp' });
+      }
+
+      return {
+        ...prev,
+        level: newLevel,
+        currentXp: newXp,
+        nextLevelXp: newNextLevelXp,
+        achievements: updatedAchievements
+      };
+    });
+  }, []);
 
   const toggleMobileMenu = () => setIsMobileMenuOpen(!isMobileMenuOpen);
 
@@ -231,6 +335,20 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row font-sans text-slate-900">
+      
+      {/* --- TOAST NOTIFICATION --- */}
+      {notification && (
+        <div className={`fixed top-6 right-6 z-[100] p-4 rounded-xl shadow-2xl border border-white/20 text-white flex items-center gap-3 animate-in slide-in-from-right-10 duration-300 ${notification.type === 'xp' ? 'bg-indigo-600' : notification.type === 'level' ? 'bg-gradient-to-r from-amber-500 to-orange-600' : 'bg-purple-600'}`}>
+           <div className="p-2 bg-white/20 rounded-full">
+              {notification.type === 'level' ? <Crown size={24} /> : notification.type === 'achievement' ? <Award size={24} /> : <Bell size={24} />}
+           </div>
+           <div>
+              <h4 className="font-bold text-sm uppercase tracking-wide">{notification.title}</h4>
+              <p className="text-xs text-indigo-100">{notification.message}</p>
+           </div>
+        </div>
+      )}
+
       {/* Mobile Header */}
       <div className="md:hidden bg-white p-4 flex justify-between items-center shadow-sm z-50 sticky top-0">
         <div className="flex items-center gap-2 font-bold text-lg text-slate-800">
@@ -242,9 +360,30 @@ const App: React.FC = () => {
       {/* Sidebar */}
       <aside className={`fixed inset-y-0 left-0 z-40 w-72 bg-white border-r border-slate-200 transform transition-transform duration-300 md:relative md:translate-x-0 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="p-6 flex flex-col h-full">
-          <div className="hidden md:flex items-center gap-3 mb-8 px-2">
+          <div className="hidden md:flex items-center gap-3 mb-6 px-2">
             <div className="bg-indigo-600 p-2.5 rounded-xl text-white shadow-lg shadow-indigo-200"><Rocket size={24} /></div>
             <div><h1 className="font-bold text-xl text-slate-900">MathMaster</h1><p className="text-xs text-slate-500 font-medium">AI Learning Hub</p></div>
+          </div>
+
+          {/* --- PROFILE WIDGET --- */}
+          <div className="mb-6 bg-slate-900 rounded-2xl p-4 text-white relative overflow-hidden shadow-lg">
+             <div className="absolute top-0 right-0 w-20 h-20 bg-indigo-500 blur-2xl opacity-20 rounded-full"></div>
+             <div className="flex justify-between items-start mb-3 relative z-10">
+                <div>
+                   <div className="text-xs text-slate-400 font-bold uppercase tracking-wider">ლეველი {userProfile.level}</div>
+                   <div className="font-bold text-lg">მოსწავლე</div>
+                </div>
+                <div className="flex items-center gap-1 bg-white/10 px-2 py-1 rounded-lg text-xs font-bold">
+                   <Flame size={12} className="text-orange-400" fill="currentColor" /> {userProfile.streakDays} დღე
+                </div>
+             </div>
+             <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden mb-2">
+                <div className="h-full bg-gradient-to-r from-indigo-400 to-purple-400 rounded-full transition-all duration-500" style={{ width: `${(userProfile.currentXp / userProfile.nextLevelXp) * 100}%` }}></div>
+             </div>
+             <div className="flex justify-between text-[10px] text-slate-400 font-mono">
+                <span>XP: {userProfile.currentXp}</span>
+                <span>NEXT: {userProfile.nextLevelXp}</span>
+             </div>
           </div>
 
           <nav className="space-y-1 flex-1 overflow-y-auto custom-scrollbar pr-2">
@@ -256,12 +395,21 @@ const App: React.FC = () => {
             <NavItem view={AppView.VISION} icon={Camera} label="ფოტო ანალიზი" />
             <NavItem view={AppView.GEOMETRY} icon={PencilRuler} label="გეომეტრიის ვიზუალი" />
             <NavItem view={AppView.BOARD} icon={Presentation} label="დაფა & გრაფიკი" />
+            <NavItem view={AppView.NUMBER_MACHINE} icon={Hash} label="რიცხვების ანალიზი" />
+            <NavItem view={AppView.STATS_MACHINE} icon={BarChart} label="სტატისტიკა" />
+            <NavItem view={AppView.FUNCTION_MACHINE} icon={Cog} label="ფუნქციის მანქანა" />
+            <NavItem view={AppView.PYTHAGORAS_MACHINE} icon={BoxSelect} label="პითაგორას მანქანა" />
+            <NavItem view={AppView.UNIT_CIRCLE_MACHINE} icon={Circle} label="ტრიგონომეტრიის წრე" />
+            <NavItem view={AppView.TRIANGLE_MACHINE} icon={TriangleIcon} label="სამკუთხედის კალკულატორი" />
             <NavItem view={AppView.CALCULATOR} icon={CalculatorIcon} label="კალკულატორი" />
             <NavItem view={AppView.MOBILE_CONNECT} icon={Smartphone} label="Mobile Connect" />
             
             <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 px-4 mt-6">შეფასება</div>
             <NavItem view={AppView.QUIZ} icon={ClipboardList} label="ტესტირება" />
             <NavItem view={AppView.NATIONAL_EXAM} icon={FileText} label="ეროვნული გამოცდა" />
+            
+            <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 px-4 mt-6">ექსტრა</div>
+            <NavItem view={AppView.QUOTES_GALLERY} icon={Quote} label="სიბრძნის კუთხე" />
           </nav>
 
           <div className="mt-auto pt-6 border-t border-slate-100">
@@ -281,11 +429,18 @@ const App: React.FC = () => {
         <div className={`h-full w-full overflow-y-auto p-4 md:p-8 custom-scrollbar ${[AppView.BOARD, AppView.CALCULATOR].includes(currentView) ? 'hidden' : 'block'}`}>
           <div className="max-w-7xl mx-auto h-full flex flex-col relative">
             <div className={currentView === AppView.SYNOPSIS ? 'block' : 'hidden'}>{renderSynopsisContent()}</div>
-            <div className={currentView === AppView.CHAT ? 'block h-full' : 'hidden'}><ChatInterface /></div>
-            <div className={currentView === AppView.VISION ? 'block h-full' : 'hidden'}><ImageAnalyzer /></div>
-            <div className={currentView === AppView.QUIZ ? 'block h-full' : 'hidden'}><QuizInterface /></div>
-            <div className={currentView === AppView.NATIONAL_EXAM ? 'block h-full' : 'hidden'}><NationalExam /></div>
-            <div className={currentView === AppView.GEOMETRY ? 'block h-full' : 'hidden'}><GeometryVisualizer /></div>
+            <div className={currentView === AppView.CHAT ? 'block h-full' : 'hidden'}><ChatInterface onAddXp={addXp} /></div>
+            <div className={currentView === AppView.VISION ? 'block h-full' : 'hidden'}><ImageAnalyzer onAddXp={addXp} /></div>
+            <div className={currentView === AppView.QUIZ ? 'block h-full' : 'hidden'}><QuizInterface onAddXp={addXp} /></div>
+            <div className={currentView === AppView.NATIONAL_EXAM ? 'block h-full' : 'hidden'}><NationalExam onAddXp={addXp} /></div>
+            <div className={currentView === AppView.GEOMETRY ? 'block h-full' : 'hidden'}><GeometryVisualizer onAddXp={addXp} /></div>
+            <div className={currentView === AppView.NUMBER_MACHINE ? 'block h-full' : 'hidden'}><NumberMachine onAddXp={addXp} /></div>
+            <div className={currentView === AppView.STATS_MACHINE ? 'block h-full' : 'hidden'}><StatsMachine onAddXp={addXp} /></div>
+            <div className={currentView === AppView.FUNCTION_MACHINE ? 'block h-full' : 'hidden'}><FunctionMachine onAddXp={addXp} /></div>
+            <div className={currentView === AppView.PYTHAGORAS_MACHINE ? 'block h-full' : 'hidden'}><PythagorasMachine onAddXp={addXp} /></div>
+            <div className={currentView === AppView.UNIT_CIRCLE_MACHINE ? 'block h-full' : 'hidden'}><UnitCircleMachine onAddXp={addXp} /></div>
+            <div className={currentView === AppView.TRIANGLE_MACHINE ? 'block h-full' : 'hidden'}><TriangleMachine onAddXp={addXp} /></div>
+            <div className={currentView === AppView.QUOTES_GALLERY ? 'block h-full' : 'hidden'}><QuotesGallery onAddXp={addXp} /></div>
             <div className={currentView === AppView.MOBILE_CONNECT ? 'block h-full' : 'hidden'}><MobileConnect onSimulateScan={handleMobileScan} /></div>
           </div>
         </div>
