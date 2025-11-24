@@ -1,5 +1,5 @@
 
-import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
+import { GoogleGenAI, GenerateContentResponse, Modality } from "@google/genai";
 import { ChatMessage, ChatRole, QuizQuestion, ExamQuestion } from '../types';
 
 // --- Configuration ---
@@ -502,5 +502,149 @@ export const processFunctionStepByStep = async (func: string, val: string): Prom
   } catch (error) {
     console.error("Function Machine Error:", error);
     return { result: "Error", steps: ["ვერ მოხერხდა გამოთვლა."] };
+  }
+};
+
+// --- Podcast / AI Discussion Service ---
+
+// Helper function to decode Base64 audio string to AudioBuffer
+// UPDATED: Manually decodes PCM data to avoid browser decoding issues with raw data
+async function decodeAudioData(base64Str: string, audioContext: AudioContext): Promise<AudioBuffer> {
+  const binaryString = atob(base64Str);
+  const len = binaryString.length;
+  const bytes = new Uint8Array(len);
+  for (let i = 0; i < len; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+  
+  // Gemini TTS returns raw PCM 16-bit Little Endian audio at 24kHz (Mono)
+  // We must convert this manually to Float32 for AudioBuffer
+  const sampleRate = 24000;
+  const numChannels = 1;
+  
+  // View as 16-bit integers
+  // Note: Javascript typed arrays use platform endianness (usually Little Endian), which matches PCM
+  const dataInt16 = new Int16Array(bytes.buffer);
+  
+  const frameCount = dataInt16.length / numChannels;
+  const buffer = audioContext.createBuffer(numChannels, frameCount, sampleRate);
+
+  for (let channel = 0; channel < numChannels; channel++) {
+    const channelData = buffer.getChannelData(channel);
+    for (let i = 0; i < frameCount; i++) {
+      // Convert Int16 (-32768 to 32767) to Float32 (-1.0 to 1.0)
+      channelData[i] = dataInt16[i * numChannels + channel] / 32768.0;
+    }
+  }
+  return buffer;
+}
+
+export const generatePodcastAudio = async (topic: string, content: string): Promise<{ audioBuffer: AudioBuffer | null, script: string }> => {
+  const ai = getAiClient();
+  if (!ai) return { audioBuffer: null, script: '' };
+
+  try {
+    // 1. Generate the Script first (Text)
+    const scriptPrompt = `
+      Create a short, engaging 2-person podcast dialogue about the math topic: "${topic}".
+      Context: ${content.substring(0, 500)}...
+      
+      Characters:
+      - Alex: Enthusiastic host, asks questions.
+      - Sarah: Expert professor, explains clearly with analogies.
+      
+      Format:
+      Alex: [Text]
+      Sarah: [Text]
+      ...
+      
+      Keep it under 150 words total.
+      **LANGUAGE: GEORGIAN (ქართული)**.
+      The conversation MUST be in natural, conversational Georgian.
+    `;
+    
+    const scriptResponse = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: scriptPrompt
+    });
+    const scriptText = scriptResponse.text || "Script generation failed.";
+
+    // 2. Generate Audio from Script
+    const audioResponse = await ai.models.generateContent({
+      model: "gemini-2.5-flash-preview-tts",
+      contents: [{ parts: [{ text: scriptText }] }],
+      config: {
+        responseModalities: [Modality.AUDIO],
+        speechConfig: {
+            multiSpeakerVoiceConfig: {
+              speakerVoiceConfigs: [
+                    {
+                        speaker: 'Alex',
+                        voiceConfig: {
+                          prebuiltVoiceConfig: { voiceName: 'Fenrir' } // Deep male
+                        }
+                    },
+                    {
+                        speaker: 'Sarah',
+                        voiceConfig: {
+                          prebuiltVoiceConfig: { voiceName: 'Kore' } // Soft female
+                        }
+                    }
+              ]
+            }
+        }
+      }
+    });
+
+    const base64Audio = audioResponse.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+    
+    if (!base64Audio) return { audioBuffer: null, script: scriptText };
+
+    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)({sampleRate: 24000});
+    const audioBuffer = await decodeAudioData(base64Audio, audioContext);
+    
+    return { audioBuffer, script: scriptText };
+
+  } catch (error) {
+    console.error("Podcast Generation Error:", error);
+    return { audioBuffer: null, script: "Error generating podcast." };
+  }
+};
+
+// --- Video Generation Service (Veo) ---
+export const generateEducationalVideo = async (topic: string): Promise<string | null> => {
+  const ai = getAiClient();
+  if (!ai) return null;
+
+  try {
+    // Ensure the topic is sanitized for the prompt
+    const prompt = `A cinematic, educational video clip showing a blackboard with mathematical formulas and geometric shapes related to "${topic}". Clean line art style, high definition, slow motion, abstract, no text.`;
+
+    let operation = await ai.models.generateVideos({
+      model: 'veo-3.1-fast-generate-preview',
+      prompt: prompt,
+      config: {
+        numberOfVideos: 1,
+        resolution: '1080p',
+        aspectRatio: '16:9' 
+      }
+    });
+
+    // Poll for completion
+    while (!operation.done) {
+      await new Promise(resolve => setTimeout(resolve, 5000)); // Wait 5 seconds
+      operation = await ai.operations.getVideosOperation({operation: operation});
+    }
+
+    const downloadLink = operation.response?.generatedVideos?.[0]?.video?.uri;
+    if (!downloadLink) return null;
+
+    // IMPORTANT: We need to fetch the video blob using the API key
+    const videoUrlWithKey = `${downloadLink}&key=${process.env.API_KEY}`;
+    return videoUrlWithKey;
+
+  } catch (error) {
+    console.error("Video Generation Error:", error);
+    return null;
   }
 };

@@ -49,7 +49,10 @@ export enum AppView {
   TRIANGLE_MACHINE = 'triangle_machine',
   NUMBER_MACHINE = 'number_machine',
   STATS_MACHINE = 'stats_machine',
-  QUOTES_GALLERY = 'quotes_gallery'
+  PROBABILITY_MACHINE = 'probability_machine',
+  MATRIX_MACHINE = 'matrix_machine',
+  QUOTES_GALLERY = 'quotes_gallery',
+  AI_DISCUSSION = 'ai_discussion'
 }
 
 export interface QuizQuestion {

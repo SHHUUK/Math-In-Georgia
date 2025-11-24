@@ -7,7 +7,7 @@ import {
   Infinity as InfinityIcon, ArrowLeft, ChevronRight, Lightbulb, Brain, PenTool,
   Divide, ClipboardList, Presentation, Smartphone, FileText, Sparkles, Rocket,
   PencilRuler, Award, Crown, Flame, Bell, Cog, BoxSelect, Circle, Triangle as TriangleIcon,
-  Hash, Quote
+  Hash, Quote, Dices, Target, Calendar, Clock, Library, Mic, PlayCircle
 } from 'lucide-react';
 import { AppView, MathSubTopic, UserProfile, Achievement } from './types';
 import { mathTopics } from './data/mathContent';
@@ -26,7 +26,10 @@ import { UnitCircleMachine } from './components/UnitCircleMachine';
 import { TriangleMachine } from './components/TriangleMachine';
 import { NumberMachine } from './components/NumberMachine';
 import { StatsMachine } from './components/StatsMachine';
+import { ProbabilityMachine } from './components/ProbabilityMachine';
+import { MatrixMachine } from './components/MatrixMachine';
 import { QuotesGallery } from './components/QuotesGallery';
+import { AIDiscussionPlayer } from './components/AIDiscussionPlayer';
 
 const iconMap: Record<string, React.ElementType> = {
   Calculator: CalculatorIcon, Layers, Triangle, Grid, Activity,
@@ -51,15 +54,22 @@ const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<AppView>(AppView.SYNOPSIS);
   const [selectedTopicId, setSelectedTopicId] = useState<string | null>(null);
   const [selectedSubTopicId, setSelectedSubTopicId] = useState<string | null>(null);
+  const [viewAllTopics, setViewAllTopics] = useState(false); // NEW STATE FOR "SEE ALL"
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [mobileImage, setMobileImage] = useState<string | null>(null);
+  const [greeting, setGreeting] = useState('');
   
   // Gamification State
   const [userProfile, setUserProfile] = useState<UserProfile>(INITIAL_PROFILE);
   const [notification, setNotification] = useState<{title: string, message: string, type: 'xp' | 'achievement' | 'level'} | null>(null);
 
-  // Load Profile
+  // Load Profile & Set Greeting
   useEffect(() => {
+    const hour = new Date().getHours();
+    if (hour < 12) setGreeting('დილა მშვიდობისა');
+    else if (hour < 18) setGreeting('გამარჯობა');
+    else setGreeting('საღამო მშვიდობისა');
+
     const savedProfile = localStorage.getItem('mathmaster_profile');
     if (savedProfile) {
       try {
@@ -143,6 +153,9 @@ const App: React.FC = () => {
 
   const handleViewChange = (view: AppView) => {
     setCurrentView(view);
+    setViewAllTopics(false); // Reset expanded view
+    setSelectedTopicId(null);
+    setSelectedSubTopicId(null);
     setIsMobileMenuOpen(false);
   };
 
@@ -158,6 +171,10 @@ const App: React.FC = () => {
 
   const goBackToSubTopics = () => {
     setSelectedSubTopicId(null);
+  };
+
+  const handleBackFromAllTopics = () => {
+     setViewAllTopics(false);
   };
 
   const renderSynopsisContent = () => {
@@ -176,6 +193,23 @@ const App: React.FC = () => {
                <h2 className="text-2xl font-bold text-slate-900">{subTopic.title}</h2>
             </div>
           </div>
+          
+          {/* AI Discussion Banner */}
+          <div className="mb-8 bg-gradient-to-r from-slate-900 to-indigo-900 rounded-2xl p-6 text-white shadow-xl flex items-center justify-between group cursor-pointer hover:scale-[1.01] transition-transform" onClick={() => setCurrentView(AppView.AI_DISCUSSION)}>
+             <div className="flex items-center gap-4">
+                <div className="p-3 bg-white/10 rounded-full backdrop-blur-sm group-hover:bg-white/20 transition-colors">
+                   <PlayCircle size={32} className="text-indigo-300" />
+                </div>
+                <div>
+                   <h3 className="font-bold text-lg">AI ვიდეო-დისკუსია</h3>
+                   <p className="text-indigo-200 text-sm">მოუსმინე ორ AI ექსპერტს, როგორ განიხილავენ ამ თემას</p>
+                </div>
+             </div>
+             <div className="hidden md:block bg-white text-indigo-900 px-4 py-2 rounded-lg font-bold text-sm shadow-lg">
+                ჩართვა
+             </div>
+          </div>
+
           <div className="space-y-8">
             {subTopic.formula && (
                <div className="bg-slate-900 rounded-2xl p-8 shadow-xl text-center overflow-x-auto relative overflow-hidden">
@@ -236,88 +270,196 @@ const App: React.FC = () => {
       );
     }
 
-    // LEVEL 1: DASHBOARD HUB
-    return (
-      <div className="space-y-8 animate-fadeIn pb-10">
-         {/* Hero Section */}
-         <div className="bg-slate-900 text-white p-8 md:p-12 rounded-3xl shadow-2xl relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-8">
-            <div className="relative z-10 max-w-2xl">
-              <div className="inline-flex items-center gap-2 bg-indigo-500/20 text-indigo-200 px-3 py-1 rounded-full text-xs font-bold mb-4 border border-indigo-500/30">
-                 <Sparkles size={12} /> დღის მათემატიკური ფაქტი
-              </div>
-              <h1 className="text-3xl md:text-5xl font-bold mb-4 leading-tight">სამყარო რიცხვების ენაზე საუბრობს.</h1>
-              <p className="text-slate-400 text-lg mb-8">
-                იცით თუ არა? 0 არ იყო რიცხვი მე-5 საუკუნემდე. ის გამოიგონეს ინდოეთში, როგორც "სიცარიელის" სიმბოლო.
-              </p>
-              <button onClick={() => setCurrentView(AppView.CHAT)} className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-xl font-bold transition-all shadow-lg shadow-indigo-500/30 flex items-center gap-2">
-                 <MessageCircle size={20} /> კითხე AI-ს ნებისმიერი რამ
-              </button>
+    // NEW: ALL TOPICS VIEW (Expanded Library)
+    if (viewAllTopics) {
+       return (
+         <div className="animate-fadeIn pb-20 space-y-6">
+            <div className="flex items-center gap-4 mb-6">
+               <button onClick={handleBackFromAllTopics} className="p-3 rounded-xl bg-white border hover:bg-indigo-50 transition-all"><ArrowLeft size={20} /></button>
+               <div>
+                  <h2 className="text-3xl font-bold text-slate-800 flex items-center gap-3"><Library className="text-indigo-600"/> თემების სრული ბიბლიოთეკა</h2>
+                  <p className="text-slate-500 text-sm">აირჩიეთ თემა დეტალური შესწავლისთვის</p>
+               </div>
             </div>
-            {/* Abstract visual decor */}
-            <div className="absolute right-0 top-0 h-full w-1/3 bg-gradient-to-l from-indigo-900/50 to-transparent skew-x-12"></div>
-            <div className="relative z-10 w-32 h-32 md:w-48 md:h-48 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-full blur-3xl opacity-30 animate-pulse"></div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+               {mathTopics.map(topic => {
+                  const Icon = iconMap[topic.icon] || BookOpen;
+                  return (
+                     <div key={topic.id} onClick={() => setSelectedTopicId(topic.id)} className="bg-white p-6 rounded-2xl border border-slate-200 hover:border-indigo-400 hover:shadow-lg transition-all cursor-pointer flex flex-col gap-4 group">
+                        <div className="flex items-center justify-between">
+                           <div className="bg-slate-50 p-4 rounded-xl text-slate-600 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+                              <Icon size={28} />
+                           </div>
+                           <span className="bg-slate-100 text-slate-600 px-3 py-1 rounded-full text-xs font-bold group-hover:bg-indigo-100 group-hover:text-indigo-600 transition-colors">
+                              {topic.content.length} საკითხი
+                           </span>
+                        </div>
+                        <div>
+                           <h4 className="font-bold text-xl text-slate-800 mb-1 group-hover:text-indigo-700 transition-colors">{topic.title}</h4>
+                           <p className="text-sm text-slate-500 line-clamp-2">
+                              {topic.content.map(c => c.title).join(', ')}
+                           </p>
+                        </div>
+                        <div className="mt-auto pt-4 flex items-center text-indigo-600 font-bold text-sm opacity-0 group-hover:opacity-100 transition-opacity">
+                           ნახვა <ChevronRight size={16} className="ml-1" />
+                        </div>
+                     </div>
+                  );
+               })}
+            </div>
+         </div>
+       );
+    }
+
+    // LEVEL 1: REIMAGINED DASHBOARD
+    return (
+      <div className="space-y-8 animate-fadeIn pb-20">
+         {/* 1. Welcome & Hero */}
+         <div className="bg-gradient-to-r from-indigo-700 via-violet-700 to-indigo-800 rounded-3xl p-8 text-white shadow-xl relative overflow-hidden">
+            {/* Abstract Shapes */}
+            <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/3 blur-3xl"></div>
+            <div className="absolute bottom-0 left-0 w-48 h-48 bg-indigo-400/20 rounded-full translate-y-1/2 -translate-x-1/4 blur-2xl"></div>
+            
+            <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+               <div>
+                  <div className="flex items-center gap-2 text-indigo-200 font-medium mb-2">
+                     <Clock size={16} /> <span>{new Date().toLocaleDateString('ka-GE', { weekday: 'long', day: 'numeric', month: 'long' })}</span>
+                  </div>
+                  <h1 className="text-3xl md:text-4xl font-bold mb-2">{greeting}, მეგობარო! 👋</h1>
+                  <p className="text-indigo-100 max-w-lg leading-relaxed">
+                     დღეს მშვენიერი დღეა ახალი ცოდნის მისაღებად. შენი პროგრესი შთამბეჭდავია.
+                  </p>
+               </div>
+               <div className="flex gap-4 bg-white/10 backdrop-blur-sm p-4 rounded-2xl border border-white/10">
+                  <div className="text-center">
+                     <div className="text-2xl font-bold">{userProfile.streakDays}</div>
+                     <div className="text-[10px] text-indigo-200 uppercase tracking-wider">დღიანი სტრიკი</div>
+                  </div>
+                  <div className="w-px bg-white/20"></div>
+                  <div className="text-center">
+                     <div className="text-2xl font-bold">{userProfile.level}</div>
+                     <div className="text-[10px] text-indigo-200 uppercase tracking-wider">ლეველი</div>
+                  </div>
+                  <div className="w-px bg-white/20"></div>
+                  <div className="text-center">
+                     <div className="text-2xl font-bold">{userProfile.currentXp}</div>
+                     <div className="text-[10px] text-indigo-200 uppercase tracking-wider">XP</div>
+                  </div>
+               </div>
+            </div>
          </div>
 
-         {/* Quick Actions Strip */}
-         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <button onClick={() => setCurrentView(AppView.CALCULATOR)} className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 hover:border-indigo-300 hover:shadow-md transition-all flex items-center gap-3 group">
-               <div className="bg-green-100 text-green-600 p-2 rounded-lg group-hover:scale-110 transition-transform"><CalculatorIcon size={20}/></div>
-               <span className="font-bold text-slate-700 text-sm">კალკულატორი</span>
-            </button>
-            <button onClick={() => setCurrentView(AppView.VISION)} className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 hover:border-indigo-300 hover:shadow-md transition-all flex items-center gap-3 group">
-               <div className="bg-blue-100 text-blue-600 p-2 rounded-lg group-hover:scale-110 transition-transform"><Camera size={20}/></div>
-               <span className="font-bold text-slate-700 text-sm">ფოტოს ამოხსნა</span>
-            </button>
-            <button onClick={() => setCurrentView(AppView.BOARD)} className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 hover:border-indigo-300 hover:shadow-md transition-all flex items-center gap-3 group">
-               <div className="bg-purple-100 text-purple-600 p-2 rounded-lg group-hover:scale-110 transition-transform"><Presentation size={20}/></div>
-               <span className="font-bold text-slate-700 text-sm">დაფა & გრაფიკი</span>
-            </button>
-            <button onClick={() => setCurrentView(AppView.QUIZ)} className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 hover:border-indigo-300 hover:shadow-md transition-all flex items-center gap-3 group">
-               <div className="bg-amber-100 text-amber-600 p-2 rounded-lg group-hover:scale-110 transition-transform"><ClipboardList size={20}/></div>
-               <span className="font-bold text-slate-700 text-sm">ცოდნის ტესტი</span>
-            </button>
-         </div>
+         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* 2. Daily Challenge & Shortcuts */}
+            <div className="lg:col-span-2 space-y-6">
+               {/* Challenge Card */}
+               <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm flex items-center justify-between hover:border-orange-300 transition-all group cursor-pointer" onClick={() => setCurrentView(AppView.QUIZ)}>
+                  <div className="flex items-center gap-4">
+                     <div className="bg-orange-100 p-4 rounded-2xl text-orange-600 group-hover:scale-110 transition-transform">
+                        <Target size={28} />
+                     </div>
+                     <div>
+                        <h3 className="font-bold text-lg text-slate-800">დღიური გამოწვევა</h3>
+                        <p className="text-slate-500 text-sm">გაიარე "ალგებრის" ტესტი და მიიღე +50 XP</p>
+                     </div>
+                  </div>
+                  <div className="bg-orange-500 text-white px-4 py-2 rounded-xl font-bold text-sm shadow-md shadow-orange-200 group-hover:shadow-lg transition-all">
+                     დაწყება
+                  </div>
+               </div>
 
-         <div className="flex items-center justify-between">
-            <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2"><BookOpen className="text-indigo-600"/> სასწავლო თემები</h2>
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">სრული სია</span>
-         </div>
+               {/* Quick Access Grid */}
+               <div>
+                  <div className="flex items-center justify-between mb-4">
+                     <h3 className="font-bold text-slate-800 text-lg">სწრაფი წვდომა</h3>
+                  </div>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                     <QuickAction icon={MessageCircle} label="AI ჩაი" color="bg-indigo-100 text-indigo-600" onClick={() => setCurrentView(AppView.CHAT)} />
+                     <QuickAction icon={Camera} label="ფოტო ამოხსნა" color="bg-purple-100 text-purple-600" onClick={() => setCurrentView(AppView.VISION)} />
+                     <QuickAction icon={CalculatorIcon} label="კალკულატორი" color="bg-emerald-100 text-emerald-600" onClick={() => setCurrentView(AppView.CALCULATOR)} />
+                     <QuickAction icon={FileText} label="გამოცდა" color="bg-blue-100 text-blue-600" onClick={() => setCurrentView(AppView.NATIONAL_EXAM)} />
+                  </div>
+               </div>
 
-         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-           {mathTopics.map((topic) => {
-             const Icon = iconMap[topic.icon] || BookOpen;
-             return (
-               <button
-                 key={topic.id}
-                 onClick={() => setSelectedTopicId(topic.id)}
-                 className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-xl hover:-translate-y-1 hover:border-indigo-200 transition-all duration-300 group text-left flex flex-col h-full relative overflow-hidden"
-               >
-                 <div className="absolute top-0 right-0 p-10 opacity-5 group-hover:opacity-10 transition-opacity transform rotate-12 scale-150 pointer-events-none">
-                    <Icon size={100} />
-                 </div>
-                 
-                 <div className="flex justify-between items-start mb-4 relative z-10">
-                   <div className="p-3 bg-indigo-50 text-indigo-600 rounded-xl group-hover:bg-indigo-600 group-hover:text-white transition-colors duration-300 shadow-sm">
-                     <Icon size={28} />
-                   </div>
-                   <span className="text-[10px] font-bold bg-slate-100 text-slate-500 px-2 py-1 rounded-md uppercase tracking-wide">
-                     {topic.content.length} საკითხი
-                   </span>
-                 </div>
-                 <h3 className="text-xl font-bold text-slate-800 mb-2 group-hover:text-indigo-700 transition-colors relative z-10">{topic.title}</h3>
-                 <p className="text-sm text-slate-500 mb-6 line-clamp-2 flex-1 relative z-10 leading-relaxed">
-                   {topic.content.slice(0, 2).map(c => c.title).join(', ')}...
-                 </p>
-                 <div className="flex items-center text-indigo-600 font-bold text-sm mt-auto group-hover:translate-x-2 transition-transform relative z-10">
-                   ნახვა <ChevronRight size={16} className="ml-1" />
-                 </div>
-               </button>
-             );
-           })}
+               {/* Topics Horizontal Scroll */}
+               <div>
+                  <div className="flex items-center justify-between mb-4">
+                     <h3 className="font-bold text-slate-800 text-lg">თემების ბიბლიოთეკა</h3>
+                     <button 
+                       onClick={() => setViewAllTopics(true)} 
+                       className="text-xs text-indigo-600 font-bold cursor-pointer hover:bg-indigo-50 px-3 py-1 rounded-lg transition-colors"
+                     >
+                       ყველას ნახვა
+                     </button>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                     {mathTopics.slice(0, 4).map(topic => {
+                        const Icon = iconMap[topic.icon] || BookOpen;
+                        return (
+                           <div key={topic.id} onClick={() => setSelectedTopicId(topic.id)} className="bg-white p-4 rounded-2xl border border-slate-200 hover:border-indigo-300 hover:shadow-md transition-all cursor-pointer flex items-center gap-4 group">
+                              <div className="bg-slate-50 p-3 rounded-xl text-slate-600 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+                                 <Icon size={24} />
+                              </div>
+                              <div>
+                                 <h4 className="font-bold text-slate-800">{topic.title}</h4>
+                                 <p className="text-xs text-slate-500">{topic.content.length} გაკვეთილი</p>
+                              </div>
+                              <ChevronRight className="ml-auto text-slate-300 group-hover:text-indigo-500" size={20} />
+                           </div>
+                        );
+                     })}
+                  </div>
+               </div>
+            </div>
+
+            {/* 3. Tools & Stats Sidebar */}
+            <div className="space-y-6">
+               <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm">
+                  <h3 className="font-bold text-slate-800 mb-4">ლაბორატორია</h3>
+                  <div className="space-y-3">
+                     <LabItem icon={Grid} label="მატრიცული მანქანა" onClick={() => setCurrentView(AppView.MATRIX_MACHINE)} />
+                     <LabItem icon={BarChart} label="სტატისტიკა" onClick={() => setCurrentView(AppView.STATS_MACHINE)} />
+                     <LabItem icon={Dices} label="ალბათობა" onClick={() => setCurrentView(AppView.PROBABILITY_MACHINE)} />
+                     <LabItem icon={TriangleIcon} label="გეომეტრია" onClick={() => setCurrentView(AppView.GEOMETRY)} />
+                     <LabItem icon={Presentation} label="დაფა" onClick={() => setCurrentView(AppView.BOARD)} />
+                  </div>
+               </div>
+
+               <div className="bg-gradient-to-br from-amber-100 to-orange-100 rounded-3xl p-6 border border-amber-200">
+                  <div className="flex items-center gap-3 mb-3">
+                     <div className="bg-white p-2 rounded-lg text-amber-500"><Quote size={20}/></div>
+                     <h3 className="font-bold text-amber-900">დღის სიბრძნე</h3>
+                  </div>
+                  <p className="text-amber-800 text-sm font-serif italic leading-relaxed">
+                     "მათემატიკა არის ის, რომლითაც ღმერთმა სამყარო დაწერა."
+                  </p>
+                  <div className="mt-2 text-right text-xs font-bold text-amber-600">— გალილეო გალილეი</div>
+               </div>
+            </div>
          </div>
       </div>
     );
   };
+
+  // Sub-components for Dashboard
+  const QuickAction = ({ icon: Icon, label, color, onClick }: any) => (
+     <button onClick={onClick} className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all flex flex-col items-center gap-2 group">
+        <div className={`p-3 rounded-xl transition-transform group-hover:scale-110 ${color}`}>
+           <Icon size={24} />
+        </div>
+        <span className="text-xs font-bold text-slate-700">{label}</span>
+     </button>
+  );
+
+  const LabItem = ({ icon: Icon, label, onClick }: any) => (
+     <button onClick={onClick} className="w-full flex items-center gap-3 p-3 hover:bg-slate-50 rounded-xl transition-colors text-left group">
+        <div className="p-2 bg-slate-100 text-slate-500 rounded-lg group-hover:bg-indigo-100 group-hover:text-indigo-600 transition-colors">
+           <Icon size={18} />
+        </div>
+        <span className="font-medium text-slate-700 group-hover:text-indigo-900 text-sm">{label}</span>
+        <ChevronRight className="ml-auto text-slate-300 group-hover:text-indigo-400" size={16} />
+     </button>
+  );
 
   // Nav Item Component
   const NavItem = ({ view, icon: Icon, label }: { view: AppView, icon: any, label: string }) => (
@@ -332,6 +474,18 @@ const App: React.FC = () => {
       {currentView === view && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-indigo-600"></div>}
     </button>
   );
+
+  const getCurrentTopicTitle = () => {
+     const t = mathTopics.find(t => t.id === selectedTopicId);
+     const s = t?.content.find(s => s.id === selectedSubTopicId);
+     return s?.title || t?.title || '';
+  };
+  
+  const getCurrentTopicContent = () => {
+     const t = mathTopics.find(t => t.id === selectedTopicId);
+     const s = t?.content.find(s => s.id === selectedSubTopicId);
+     return s?.fullExplanation || s?.explanation || '';
+  };
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row font-sans text-slate-900">
@@ -395,13 +549,17 @@ const App: React.FC = () => {
             <NavItem view={AppView.VISION} icon={Camera} label="ფოტო ანალიზი" />
             <NavItem view={AppView.GEOMETRY} icon={PencilRuler} label="გეომეტრიის ვიზუალი" />
             <NavItem view={AppView.BOARD} icon={Presentation} label="დაფა & გრაფიკი" />
-            <NavItem view={AppView.NUMBER_MACHINE} icon={Hash} label="რიცხვების ანალიზი" />
+            <NavItem view={AppView.CALCULATOR} icon={CalculatorIcon} label="კალკულატორი" />
+            
+            <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 px-4 mt-6">ლაბორატორია</div>
+            <NavItem view={AppView.MATRIX_MACHINE} icon={Grid} label="მატრიცული კალკულატორი" />
+            <NavItem view={AppView.PROBABILITY_MACHINE} icon={Dices} label="ალბათობა" />
             <NavItem view={AppView.STATS_MACHINE} icon={BarChart} label="სტატისტიკა" />
+            <NavItem view={AppView.NUMBER_MACHINE} icon={Hash} label="რიცხვების ანალიზი" />
             <NavItem view={AppView.FUNCTION_MACHINE} icon={Cog} label="ფუნქციის მანქანა" />
             <NavItem view={AppView.PYTHAGORAS_MACHINE} icon={BoxSelect} label="პითაგორას მანქანა" />
             <NavItem view={AppView.UNIT_CIRCLE_MACHINE} icon={Circle} label="ტრიგონომეტრიის წრე" />
-            <NavItem view={AppView.TRIANGLE_MACHINE} icon={TriangleIcon} label="სამკუთხედის კალკულატორი" />
-            <NavItem view={AppView.CALCULATOR} icon={CalculatorIcon} label="კალკულატორი" />
+            <NavItem view={AppView.TRIANGLE_MACHINE} icon={TriangleIcon} label="სამკუთხედის ოსტატი" />
             <NavItem view={AppView.MOBILE_CONNECT} icon={Smartphone} label="Mobile Connect" />
             
             <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 px-4 mt-6">შეფასება</div>
@@ -425,8 +583,17 @@ const App: React.FC = () => {
       <main className="flex-1 h-[calc(100vh-64px)] md:h-screen overflow-hidden relative bg-slate-50/50">
         <div className={`absolute inset-0 p-0 md:p-0 ${currentView === AppView.BOARD ? 'z-10 block' : 'z-0 invisible'}`}><Whiteboard /></div>
         <div className={`absolute inset-0 p-4 md:p-8 ${currentView === AppView.CALCULATOR ? 'z-10 block' : 'z-0 invisible'}`}><Calculator /></div>
+        <div className={`absolute inset-0 p-4 md:p-8 z-20 ${currentView === AppView.AI_DISCUSSION ? 'flex items-center justify-center backdrop-blur-sm bg-slate-900/50' : 'hidden'}`}>
+           {currentView === AppView.AI_DISCUSSION && (
+              <AIDiscussionPlayer 
+                 topicTitle={getCurrentTopicTitle()} 
+                 topicContent={getCurrentTopicContent()} 
+                 onClose={() => setCurrentView(AppView.SYNOPSIS)} 
+              />
+           )}
+        </div>
         
-        <div className={`h-full w-full overflow-y-auto p-4 md:p-8 custom-scrollbar ${[AppView.BOARD, AppView.CALCULATOR].includes(currentView) ? 'hidden' : 'block'}`}>
+        <div className={`h-full w-full overflow-y-auto p-4 md:p-8 custom-scrollbar ${[AppView.BOARD, AppView.CALCULATOR, AppView.AI_DISCUSSION].includes(currentView) ? 'hidden' : 'block'}`}>
           <div className="max-w-7xl mx-auto h-full flex flex-col relative">
             <div className={currentView === AppView.SYNOPSIS ? 'block' : 'hidden'}>{renderSynopsisContent()}</div>
             <div className={currentView === AppView.CHAT ? 'block h-full' : 'hidden'}><ChatInterface onAddXp={addXp} /></div>
@@ -436,6 +603,8 @@ const App: React.FC = () => {
             <div className={currentView === AppView.GEOMETRY ? 'block h-full' : 'hidden'}><GeometryVisualizer onAddXp={addXp} /></div>
             <div className={currentView === AppView.NUMBER_MACHINE ? 'block h-full' : 'hidden'}><NumberMachine onAddXp={addXp} /></div>
             <div className={currentView === AppView.STATS_MACHINE ? 'block h-full' : 'hidden'}><StatsMachine onAddXp={addXp} /></div>
+            <div className={currentView === AppView.PROBABILITY_MACHINE ? 'block h-full' : 'hidden'}><ProbabilityMachine onAddXp={addXp} /></div>
+            <div className={currentView === AppView.MATRIX_MACHINE ? 'block h-full' : 'hidden'}><MatrixMachine onAddXp={addXp} /></div>
             <div className={currentView === AppView.FUNCTION_MACHINE ? 'block h-full' : 'hidden'}><FunctionMachine onAddXp={addXp} /></div>
             <div className={currentView === AppView.PYTHAGORAS_MACHINE ? 'block h-full' : 'hidden'}><PythagorasMachine onAddXp={addXp} /></div>
             <div className={currentView === AppView.UNIT_CIRCLE_MACHINE ? 'block h-full' : 'hidden'}><UnitCircleMachine onAddXp={addXp} /></div>
