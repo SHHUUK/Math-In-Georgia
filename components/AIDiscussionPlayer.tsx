@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Play, Pause, Mic, RefreshCcw, Sparkles, User, BookOpen, AudioWaveform, Video, Lock } from 'lucide-react';
+import { Play, Pause, Mic, RefreshCcw, Sparkles, User, BookOpen, AudioWaveform, Video, Lock, Check, AlertCircle, Key } from 'lucide-react';
 import { generatePodcastAudio, generateEducationalVideo } from '../services/geminiService';
 
 interface AIDiscussionPlayerProps {
@@ -17,6 +17,7 @@ export const AIDiscussionPlayer: React.FC<AIDiscussionPlayerProps> = ({ topicTit
   const [script, setScript] = useState<string>('');
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [hasApiKey, setHasApiKey] = useState<boolean>(false);
+  const [videoError, setVideoError] = useState<string | null>(null);
   
   const [audioContext, setAudioContext] = useState<AudioContext | null>(null);
   const [sourceNode, setSourceNode] = useState<AudioBufferSourceNode | null>(null);
@@ -29,19 +30,12 @@ export const AIDiscussionPlayer: React.FC<AIDiscussionPlayerProps> = ({ topicTit
   const analyserRef = useRef<AnalyserNode | null>(null);
   const animationRef = useRef<number | null>(null);
 
-  // Initialize Audio Context
+  // Initialize Audio Context and Check API Key Status
   useEffect(() => {
     const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
     const ctx = new AudioContextClass({ sampleRate: 24000 });
     setAudioContext(ctx);
     
-    // Check for API Key for Video (Veo Requirement)
-    const checkKey = async () => {
-       if ((window as any).aistudio && (window as any).aistudio.hasSelectedApiKey) {
-          const hasKey = await (window as any).aistudio.hasSelectedApiKey();
-          setHasApiKey(hasKey);
-       }
-    };
     checkKey();
 
     return () => {
@@ -52,20 +46,52 @@ export const AIDiscussionPlayer: React.FC<AIDiscussionPlayerProps> = ({ topicTit
     };
   }, []);
 
-  const selectApiKey = async () => {
-     if ((window as any).aistudio && (window as any).aistudio.openSelectKey) {
-        await (window as any).aistudio.openSelectKey();
-        setHasApiKey(true);
+  const checkKey = async () => {
+     if ((window as any).aistudio && (window as any).aistudio.hasSelectedApiKey) {
+        const hasKey = await (window as any).aistudio.hasSelectedApiKey();
+        setHasApiKey(hasKey);
      }
+  };
+
+  const handleEnableVideo = async () => {
+     if ((window as any).aistudio && (window as any).aistudio.openSelectKey) {
+        try {
+           await (window as any).aistudio.openSelectKey();
+           // Optimistically assume success to prevent race condition and allow immediate retry
+           setHasApiKey(true);
+           setVideoError(null);
+           
+           // Trigger video generation immediately after unlock attempt
+           generateVideoOnly();
+        } catch (e) {
+           console.error("Key selection failed", e);
+        }
+     }
+  };
+
+  const generateVideoOnly = async () => {
+     if (!topicTitle) return;
+     setIsGeneratingVideo(true);
+     setVideoError(null);
+     
+     const vid = await generateEducationalVideo(topicTitle);
+     if (vid) {
+        setVideoUrl(vid);
+     } else {
+        // If generation fails (e.g. 404 due to invalid key or permissions)
+        setVideoError("ვიდეოს გენერირება ვერ მოხერხდა. შეამოწმეთ, აქვს თუ არა თქვენს API Key-ს Veo მოდელზე წვდომა.");
+     }
+     setIsGeneratingVideo(false);
   };
 
   const initPodcast = async () => {
     if (!topicTitle) return;
     setIsLoading(true);
     
-    // Parallel Generation if key exists
+    // Always generate audio first as base content
     const audioPromise = generatePodcastAudio(topicTitle, topicContent);
     
+    // Only generate video if key is already confirmed present
     let videoPromise = Promise.resolve(null as string | null);
     if (hasApiKey) {
         setIsGeneratingVideo(true);
@@ -81,6 +107,11 @@ export const AIDiscussionPlayer: React.FC<AIDiscussionPlayerProps> = ({ topicTit
     
     if (videoResult) {
        setVideoUrl(videoResult);
+    } else if (hasApiKey && isGeneratingVideo) {
+       // If we tried to generate but got null (likely error/404), fail silently for init
+       // ensuring the audio player still works.
+       console.warn("Video generation returned null, falling back to audio visualizer.");
+       setVideoError("Veo ვიდეოს გენერირება ვერ მოხერხდა. გადართულია აუდიო ვიზუალიზატორზე.");
     }
     
     setIsLoading(false);
@@ -91,7 +122,7 @@ export const AIDiscussionPlayer: React.FC<AIDiscussionPlayerProps> = ({ topicTit
     if (topicTitle) {
       initPodcast();
     }
-  }, [topicTitle]); // Only re-run if topic changes
+  }, [topicTitle]);
 
   const playAudio = () => {
     if (!audioContext || !audioBuffer) return;
@@ -166,10 +197,16 @@ export const AIDiscussionPlayer: React.FC<AIDiscussionPlayerProps> = ({ topicTit
       for (let i = 0; i < bufferLength; i++) {
         barHeight = dataArray[i] / 2;
         
-        // Use white/light blue for video overlay visibility
         const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-        gradient.addColorStop(0, 'rgba(255, 255, 255, 0.8)');
-        gradient.addColorStop(1, 'rgba(129, 140, 248, 0.8)');
+        if (videoUrl) {
+           // White/Blue overlay for video
+           gradient.addColorStop(0, 'rgba(255, 255, 255, 0.8)');
+           gradient.addColorStop(1, 'rgba(129, 140, 248, 0.8)');
+        } else {
+           // Indigo/Purple for default background
+           gradient.addColorStop(0, '#818cf8');
+           gradient.addColorStop(1, '#c084fc');
+        }
         
         ctx.fillStyle = gradient;
         
@@ -205,74 +242,103 @@ export const AIDiscussionPlayer: React.FC<AIDiscussionPlayerProps> = ({ topicTit
 
        <div className="flex-1 flex flex-col lg:flex-row overflow-hidden bg-black">
           
-          {/* Left: Video Player Area */}
-          <div className="w-full lg:w-3/5 bg-black relative flex items-center justify-center group">
+          {/* Left: Visual Area (Video or Visualizer) */}
+          <div className="w-full lg:w-3/5 bg-slate-950 relative flex items-center justify-center group overflow-hidden">
              
              {/* Video Background */}
              {videoUrl ? (
                 <video 
                    ref={videoRef}
                    src={videoUrl} 
-                   className="w-full h-full object-contain"
+                   className="w-full h-full object-cover"
                    loop 
                    muted 
                    playsInline
                 />
              ) : (
-                <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-indigo-950 to-black flex items-center justify-center">
+                // Default Visualizer Background when NO video
+                <div className="absolute inset-0 flex items-center justify-center">
                    {/* Fallback Avatars if no video */}
-                   <div className="flex items-center gap-8">
-                      <div className={`flex flex-col items-center gap-2 transition-transform duration-300 ${isPlaying ? 'scale-110' : 'scale-100'}`}>
-                         <div className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-400 to-indigo-600 p-0.5 shadow-lg">
-                            <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Alex" alt="Host" className="w-full h-full rounded-full bg-white" />
-                         </div>
-                         <span className="text-xs font-bold text-slate-400">Alex</span>
-                      </div>
-                      <div className={`flex flex-col items-center gap-2 transition-transform duration-300 ${isPlaying ? 'scale-110' : 'scale-100'}`}>
-                         <div className="w-20 h-20 rounded-full bg-gradient-to-br from-pink-400 to-rose-600 p-0.5 shadow-lg">
-                            <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah" alt="Guest" className="w-full h-full rounded-full bg-white" />
-                         </div>
-                         <span className="text-xs font-bold text-slate-400">Sarah</span>
-                      </div>
-                   </div>
+                   {!isLoading && (
+                     <div className="flex items-center gap-8 opacity-30 grayscale">
+                        <div className="w-20 h-20 rounded-full bg-white/10 p-2">
+                           <User className="w-full h-full text-white" />
+                        </div>
+                        <div className="w-20 h-20 rounded-full bg-white/10 p-2">
+                           <User className="w-full h-full text-white" />
+                        </div>
+                     </div>
+                   )}
+                   {/* Large Canvas for Visualizer when no video */}
+                   <canvas ref={canvasRef} width="600" height="200" className="absolute w-full h-full opacity-50"></canvas>
                 </div>
              )}
 
-             {/* Overlays */}
-             <div className="absolute inset-0 bg-black/30 pointer-events-none"></div>
+             {/* Video Overlay for Controls */}
+             <div className="absolute inset-0 bg-black/20 pointer-events-none"></div>
              
-             {/* Visualizer Canvas Overlay */}
-             <div className="absolute bottom-0 left-0 right-0 h-32 flex items-end justify-center pb-10 pointer-events-none">
-                <canvas ref={canvasRef} width="400" height="80" className="w-full max-w-md h-20 opacity-80"></canvas>
-             </div>
+             {/* If video exists, show a smaller visualizer at the bottom */}
+             {videoUrl && (
+               <div className="absolute bottom-0 left-0 right-0 h-32 flex items-end justify-center pb-10 pointer-events-none">
+                  <canvas ref={canvasRef} width="400" height="80" className="w-full max-w-md h-20 opacity-80"></canvas>
+               </div>
+             )}
 
-             {/* Generating States */}
+             {/* Loading State */}
              {(isLoading || isGeneratingVideo) && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/70 backdrop-blur-sm z-20">
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 backdrop-blur-sm z-20">
                    <div className="relative">
                       <div className="w-16 h-16 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
                       <Sparkles size={24} className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-indigo-300 animate-pulse" />
                    </div>
                    <p className="text-white font-bold mt-4 animate-pulse">
-                      {isGeneratingVideo ? 'იქმნება ვიდეო ახსნა (Veo)...' : 'გენერირდება აუდიო...'}
+                      {isGeneratingVideo ? 'იქმნება ვიდეო დაფა (Veo)...' : 'გენერირდება აუდიო...'}
                    </p>
                 </div>
              )}
 
-             {/* API Key Prompt for Video */}
-             {!hasApiKey && !isLoading && (
+             {/* Video Error Notification - Improved for Fallback */}
+             {videoError && !isGeneratingVideo && !videoUrl && (
+                <div className="absolute top-16 left-4 right-4 bg-slate-800/90 text-white p-4 rounded-xl text-sm text-center backdrop-blur-md z-30 animate-in slide-in-from-top-4 border border-slate-600 shadow-lg">
+                   <div className="flex items-center justify-center gap-2 font-bold mb-2 text-amber-400">
+                      <AlertCircle size={18} /> ვიდეო მიუწვდომელია
+                   </div>
+                   <p className="text-slate-300 mb-3">{videoError}</p>
+                   <div className="flex justify-center gap-3">
+                      <button onClick={() => setVideoError(null)} className="px-4 py-1 bg-white/10 hover:bg-white/20 rounded-lg transition-colors">დახურვა</button>
+                      <button onClick={handleEnableVideo} className="px-4 py-1 bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors flex items-center gap-2">
+                         <Key size={12} /> სხვა Key-ს არჩევა
+                      </button>
+                   </div>
+                </div>
+             )}
+
+             {/* API Key Unlock Button - Only show if no key & not loading & no video */}
+             {!hasApiKey && !isLoading && !videoUrl && !isGeneratingVideo && (
                 <div className="absolute top-4 right-4 z-30">
                    <button 
-                     onClick={selectApiKey}
-                     className="bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-xl font-bold text-xs shadow-lg flex items-center gap-2 transition-all"
+                     onClick={handleEnableVideo}
+                     className="bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-xl font-bold text-xs shadow-lg flex items-center gap-2 transition-all border border-amber-400"
                    >
-                      <Lock size={14} /> ვიდეოს ჩართვა (API Key)
+                      <Lock size={14} /> Unlock Video (Premium)
+                   </button>
+                </div>
+             )}
+             
+             {/* Key Present Indicator or Retry Button */}
+             {hasApiKey && !videoUrl && !isGeneratingVideo && !isLoading && !videoError && (
+                <div className="absolute top-4 right-4 z-30 flex flex-col items-end gap-2">
+                   <div className="flex items-center gap-2 text-green-400 text-xs font-bold bg-black/50 px-3 py-1 rounded-full backdrop-blur-sm border border-green-900/50">
+                      <Check size={12} /> Premium Active
+                   </div>
+                   <button onClick={generateVideoOnly} className="text-white text-[10px] hover:underline flex items-center gap-1 bg-white/10 px-2 py-1 rounded hover:bg-white/20 transition-colors backdrop-blur-sm">
+                      <RefreshCcw size={10}/> ვიდეოს ცდა
                    </button>
                 </div>
              )}
 
              {/* Play Controls */}
-             <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+             <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10">
                 <button 
                   onClick={isPlaying ? pauseAudio : playAudio}
                   disabled={isLoading || !audioBuffer}

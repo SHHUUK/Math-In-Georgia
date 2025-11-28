@@ -4,6 +4,7 @@ import { ChatMessage, ChatRole, QuizQuestion, ExamQuestion } from '../types';
 
 // --- Configuration ---
 const getAiClient = () => {
+  // Always create a new instance to ensure the latest API key (if updated via UI) is used
   if (typeof process !== 'undefined' && process.env && process.env.API_KEY) {
     return new GoogleGenAI({ apiKey: process.env.API_KEY });
   }
@@ -71,8 +72,9 @@ export const chatWithGemini = async (
     // Add text prompt
     contents.push({ text: promptText });
 
+    // Using gemini-2.5-flash for faster response time while maintaining high quality for tutoring
     const response: GenerateContentResponse = await ai.models.generateContent({
-      model: 'gemini-3-pro-preview',
+      model: 'gemini-2.5-flash',
       contents: { parts: contents },
     });
 
@@ -92,8 +94,9 @@ export const analyzeImageWithGemini = async (
   if (!ai) return "Error: API Key not configured.";
 
   try {
+    // Using gemini-2.5-flash for faster visual analysis
     const response: GenerateContentResponse = await ai.models.generateContent({
-      model: 'gemini-3-pro-preview',
+      model: 'gemini-2.5-flash',
       contents: {
         parts: [
           {
@@ -160,7 +163,7 @@ export const generateSimilarProblem = async (
     `;
 
     const response = await ai.models.generateContent({
-      model: 'gemini-3-pro-preview',
+      model: 'gemini-2.5-flash',
       contents: prompt,
     });
 
@@ -237,8 +240,9 @@ export const generateQuiz = async (topic: string): Promise<QuizQuestion[]> => {
       ]
     `;
 
+    // Using gemini-2.5-flash for rapid quiz generation
     const response = await ai.models.generateContent({
-      model: 'gemini-3-pro-preview',
+      model: 'gemini-2.5-flash',
       contents: prompt,
       config: {
         responseMimeType: "application/json"
@@ -300,6 +304,7 @@ export const generateMockExam = async (): Promise<ExamQuestion[]> => {
       ]
     `;
 
+    // Keep gemini-3-pro-preview for Exams to ensure complexity and quality
     const response = await ai.models.generateContent({
       model: 'gemini-3-pro-preview',
       contents: prompt,
@@ -349,6 +354,7 @@ export const gradeOpenEndedQuestion = async (
       }
     `;
 
+    // Keep gemini-3-pro-preview for Grading to ensure fairness and reasoning depth
     const response = await ai.models.generateContent({
       model: 'gemini-3-pro-preview',
       contents: prompt,
@@ -447,8 +453,9 @@ export const solveGeometryProblem = async (problemText: string, base64Image?: st
       });
     }
 
+    // Using gemini-2.5-flash for faster geometry solving
     const response = await ai.models.generateContent({
-      model: 'gemini-3-pro-preview',
+      model: 'gemini-2.5-flash',
       contents: { parts: contents },
       config: { responseMimeType: "application/json" }
     });
@@ -490,8 +497,9 @@ export const processFunctionStepByStep = async (func: string, val: string): Prom
       }
     `;
 
+    // Using gemini-2.5-flash for immediate step-by-step output
     const response = await ai.models.generateContent({
-      model: 'gemini-3-pro-preview',
+      model: 'gemini-2.5-flash',
       contents: prompt,
       config: { responseMimeType: "application/json" }
     });
@@ -508,7 +516,6 @@ export const processFunctionStepByStep = async (func: string, val: string): Prom
 // --- Podcast / AI Discussion Service ---
 
 // Helper function to decode Base64 audio string to AudioBuffer
-// UPDATED: Manually decodes PCM data to avoid browser decoding issues with raw data
 async function decodeAudioData(base64Str: string, audioContext: AudioContext): Promise<AudioBuffer> {
   const binaryString = atob(base64Str);
   const len = binaryString.length;
@@ -518,12 +525,9 @@ async function decodeAudioData(base64Str: string, audioContext: AudioContext): P
   }
   
   // Gemini TTS returns raw PCM 16-bit Little Endian audio at 24kHz (Mono)
-  // We must convert this manually to Float32 for AudioBuffer
   const sampleRate = 24000;
   const numChannels = 1;
   
-  // View as 16-bit integers
-  // Note: Javascript typed arrays use platform endianness (usually Little Endian), which matches PCM
   const dataInt16 = new Int16Array(bytes.buffer);
   
   const frameCount = dataInt16.length / numChannels;
@@ -532,7 +536,6 @@ async function decodeAudioData(base64Str: string, audioContext: AudioContext): P
   for (let channel = 0; channel < numChannels; channel++) {
     const channelData = buffer.getChannelData(channel);
     for (let i = 0; i < frameCount; i++) {
-      // Convert Int16 (-32768 to 32767) to Float32 (-1.0 to 1.0)
       channelData[i] = dataInt16[i * numChannels + channel] / 32768.0;
     }
   }
@@ -613,12 +616,18 @@ export const generatePodcastAudio = async (topic: string, content: string): Prom
 
 // --- Video Generation Service (Veo) ---
 export const generateEducationalVideo = async (topic: string): Promise<string | null> => {
+  // Create a fresh client to ensure any newly selected API key is used
   const ai = getAiClient();
   if (!ai) return null;
 
   try {
-    // Ensure the topic is sanitized for the prompt
-    const prompt = `A cinematic, educational video clip showing a blackboard with mathematical formulas and geometric shapes related to "${topic}". Clean line art style, high definition, slow motion, abstract, no text.`;
+    // UPDATED PROMPT: Cinematic, highly detailed educational content with blackboard aesthetics
+    const prompt = `
+      Educational video of a blackboard lesson about '${topic}'. 
+      Close-up shots of white chalk writing complex formulas, drawing graphs, and solving equations on a dark green board. 
+      The content appears dynamically as if being written by an invisible hand. 
+      Cinematic lighting, high resolution, realistic texture, time-lapse style.
+    `;
 
     let operation = await ai.models.generateVideos({
       model: 'veo-3.1-fast-generate-preview',
@@ -644,6 +653,7 @@ export const generateEducationalVideo = async (topic: string): Promise<string | 
     return videoUrlWithKey;
 
   } catch (error) {
+    // Log the error but return null so the UI can handle fallback
     console.error("Video Generation Error:", error);
     return null;
   }

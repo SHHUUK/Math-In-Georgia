@@ -7,7 +7,7 @@ import {
   Infinity as InfinityIcon, ArrowLeft, ChevronRight, Lightbulb, Brain, PenTool,
   Divide, ClipboardList, Presentation, Smartphone, FileText, Sparkles, Rocket,
   PencilRuler, Award, Crown, Flame, Bell, Cog, BoxSelect, Circle, Triangle as TriangleIcon,
-  Hash, Quote, Dices, Target, Calendar, Clock, Library, Mic, PlayCircle
+  Hash, Quote, Dices, Target, Calendar, Clock, Library, Mic, PlayCircle, FileDown
 } from 'lucide-react';
 import { AppView, MathSubTopic, UserProfile, Achievement } from './types';
 import { mathTopics } from './data/mathContent';
@@ -58,6 +58,7 @@ const App: React.FC = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [mobileImage, setMobileImage] = useState<string | null>(null);
   const [greeting, setGreeting] = useState('');
+  const [isExporting, setIsExporting] = useState(false);
   
   // Gamification State
   const [userProfile, setUserProfile] = useState<UserProfile>(INITIAL_PROFILE);
@@ -149,6 +150,38 @@ const App: React.FC = () => {
     });
   }, []);
 
+  // PDF Export Logic
+  const handleExportPdf = (elementId: string, filename: string) => {
+    const element = document.getElementById(elementId);
+    if (!element || !(window as any).html2pdf) {
+      alert("PDF ექსპორტი ვერ მოხერხდა. სცადეთ გვერდის გადატვირთვა.");
+      return;
+    }
+
+    setIsExporting(true);
+    
+    const opt = {
+      margin: [10, 10, 10, 10], // top, left, bottom, right
+      filename: filename,
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { 
+        scale: 2, 
+        useCORS: true,
+        letterRendering: true 
+      },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+      pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+    };
+
+    (window as any).html2pdf().set(opt).from(element).save().then(() => {
+      setIsExporting(false);
+      addXp(15, 'PDF შენახვა');
+    }).catch((err: any) => {
+      console.error(err);
+      setIsExporting(false);
+    });
+  };
+
   const toggleMobileMenu = () => setIsMobileMenuOpen(!isMobileMenuOpen);
 
   const handleViewChange = (view: AppView) => {
@@ -186,61 +219,73 @@ const App: React.FC = () => {
 
       return (
         <div className="animate-fadeIn pb-20 max-w-4xl mx-auto">
-          <div className="flex items-center gap-4 mb-8">
-            <button onClick={goBackToSubTopics} className="p-2 rounded-xl bg-white border hover:bg-indigo-50 transition-all"><ArrowLeft size={20} /></button>
-            <div>
-               <span className="text-xs font-bold text-indigo-600 uppercase tracking-wider">{topic.title}</span>
-               <h2 className="text-2xl font-bold text-slate-900">{subTopic.title}</h2>
+          <div className="flex items-center justify-between mb-8">
+            <div className="flex items-center gap-4">
+              <button onClick={goBackToSubTopics} className="p-2 rounded-xl bg-white border hover:bg-indigo-50 transition-all"><ArrowLeft size={20} /></button>
+              <div>
+                 <span className="text-xs font-bold text-indigo-600 uppercase tracking-wider">{topic.title}</span>
+                 <h2 className="text-2xl font-bold text-slate-900">{subTopic.title}</h2>
+              </div>
             </div>
+            <button 
+              onClick={() => handleExportPdf('export-detail-container', `${subTopic.title}.pdf`)}
+              disabled={isExporting}
+              className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-700 hover:text-indigo-600 hover:border-indigo-200 rounded-xl transition-all shadow-sm font-bold text-sm"
+            >
+              {isExporting ? <Rocket className="animate-spin" size={18} /> : <FileDown size={18} />}
+              <span className="hidden sm:inline">შენახვა PDF</span>
+            </button>
           </div>
           
-          {/* AI Discussion Banner */}
-          <div className="mb-8 bg-gradient-to-r from-slate-900 to-indigo-900 rounded-2xl p-6 text-white shadow-xl flex items-center justify-between group cursor-pointer hover:scale-[1.01] transition-transform" onClick={() => setCurrentView(AppView.AI_DISCUSSION)}>
-             <div className="flex items-center gap-4">
-                <div className="p-3 bg-white/10 rounded-full backdrop-blur-sm group-hover:bg-white/20 transition-colors">
-                   <PlayCircle size={32} className="text-indigo-300" />
-                </div>
-                <div>
-                   <h3 className="font-bold text-lg">AI ვიდეო-დისკუსია</h3>
-                   <p className="text-indigo-200 text-sm">მოუსმინე ორ AI ექსპერტს, როგორ განიხილავენ ამ თემას</p>
-                </div>
-             </div>
-             <div className="hidden md:block bg-white text-indigo-900 px-4 py-2 rounded-lg font-bold text-sm shadow-lg">
-                ჩართვა
-             </div>
-          </div>
-
-          <div className="space-y-8">
-            {subTopic.formula && (
-               <div className="bg-slate-900 rounded-2xl p-8 shadow-xl text-center overflow-x-auto relative overflow-hidden">
-                  <div className="absolute top-0 left-0 w-full h-full opacity-10 bg-[radial-gradient(#fff_1px,transparent_1px)] bg-[length:20px_20px]"></div>
-                  <pre className="font-mono text-2xl text-indigo-300 font-bold whitespace-pre-wrap relative z-10">{subTopic.formula}</pre>
-               </div>
-            )}
-            {subTopic.realWorldAnalogy && (
-              <div className="bg-amber-50 border-l-4 border-amber-400 p-6 rounded-r-xl shadow-sm flex gap-3">
-                <Lightbulb className="text-amber-500 shrink-0 mt-1" size={24} />
-                <div><h3 className="font-bold text-amber-900 mb-2">ანალოგია</h3><p className="text-amber-800 text-lg">{subTopic.realWorldAnalogy}</p></div>
-              </div>
-            )}
-            <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-200">
-              <div className="flex items-center gap-3 mb-4 text-indigo-700"><Brain size={24} /><h3 className="text-xl font-bold">ახსნა</h3></div>
-              <p className="whitespace-pre-line text-slate-700 leading-loose">{subTopic.fullExplanation || subTopic.explanation}</p>
-            </div>
-            {subTopic.exampleProblem && (
-              <div className="bg-indigo-50 rounded-2xl p-8 border border-indigo-100">
-                <div className="flex items-center gap-3 mb-6 text-indigo-800"><PenTool size={24} /><h3 className="text-xl font-bold">მაგალითი</h3></div>
-                <div className="bg-white rounded-xl p-6 shadow-sm">
-                  <p className="font-bold text-lg mb-4">ამოცანა: <span className="font-mono text-indigo-600">{subTopic.exampleProblem.problem}</span></p>
-                  <div className="space-y-3">
-                    {subTopic.exampleProblem.steps.map((step, idx) => (
-                      <div key={idx} className="flex gap-3"><div className="bg-indigo-100 text-indigo-700 font-bold w-6 h-6 rounded-full flex items-center justify-center text-sm shrink-0">{idx + 1}</div><p className="text-slate-600">{step}</p></div>
-                    ))}
+          <div id="export-detail-container" className="bg-white/0"> {/* Container for PDF */}
+            {/* AI Discussion Banner (Hide during export via CSS ideally, but here we just keep it) */}
+            <div className="mb-8 bg-gradient-to-r from-slate-900 to-indigo-900 rounded-2xl p-6 text-white shadow-xl flex items-center justify-between group cursor-pointer hover:scale-[1.01] transition-transform" onClick={() => setCurrentView(AppView.AI_DISCUSSION)} data-html2canvas-ignore>
+               <div className="flex items-center gap-4">
+                  <div className="p-3 bg-white/10 rounded-full backdrop-blur-sm group-hover:bg-white/20 transition-colors">
+                     <PlayCircle size={32} className="text-indigo-300" />
                   </div>
-                  <div className="mt-6 bg-green-50 text-green-800 p-4 rounded-lg font-bold text-center border border-green-100">პასუხი: {subTopic.exampleProblem.solution}</div>
+                  <div>
+                     <h3 className="font-bold text-lg">AI ვიდეო-დისკუსია</h3>
+                     <p className="text-indigo-200 text-sm">მოუსმინე ორ AI ექსპერტს, როგორ განიხილავენ ამ თემას</p>
+                  </div>
+               </div>
+               <div className="hidden md:block bg-white text-indigo-900 px-4 py-2 rounded-lg font-bold text-sm shadow-lg">
+                  ჩართვა
+               </div>
+            </div>
+
+            <div className="space-y-8">
+              {subTopic.formula && (
+                 <div className="bg-slate-900 rounded-2xl p-8 shadow-xl text-center overflow-x-auto relative overflow-hidden">
+                    <div className="absolute top-0 left-0 w-full h-full opacity-10 bg-[radial-gradient(#fff_1px,transparent_1px)] bg-[length:20px_20px]"></div>
+                    <pre className="font-mono text-2xl text-indigo-300 font-bold whitespace-pre-wrap relative z-10">{subTopic.formula}</pre>
+                 </div>
+              )}
+              {subTopic.realWorldAnalogy && (
+                <div className="bg-amber-50 border-l-4 border-amber-400 p-6 rounded-r-xl shadow-sm flex gap-3">
+                  <Lightbulb className="text-amber-500 shrink-0 mt-1" size={24} />
+                  <div><h3 className="font-bold text-amber-900 mb-2">ანალოგია</h3><p className="text-amber-800 text-lg">{subTopic.realWorldAnalogy}</p></div>
                 </div>
+              )}
+              <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-200">
+                <div className="flex items-center gap-3 mb-4 text-indigo-700"><Brain size={24} /><h3 className="text-xl font-bold">ახსნა</h3></div>
+                <p className="whitespace-pre-line text-slate-700 leading-loose">{subTopic.fullExplanation || subTopic.explanation}</p>
               </div>
-            )}
+              {subTopic.exampleProblem && (
+                <div className="bg-indigo-50 rounded-2xl p-8 border border-indigo-100">
+                  <div className="flex items-center gap-3 mb-6 text-indigo-800"><PenTool size={24} /><h3 className="text-xl font-bold">მაგალითი</h3></div>
+                  <div className="bg-white rounded-xl p-6 shadow-sm">
+                    <p className="font-bold text-lg mb-4">ამოცანა: <span className="font-mono text-indigo-600">{subTopic.exampleProblem.problem}</span></p>
+                    <div className="space-y-3">
+                      {subTopic.exampleProblem.steps.map((step, idx) => (
+                        <div key={idx} className="flex gap-3"><div className="bg-indigo-100 text-indigo-700 font-bold w-6 h-6 rounded-full flex items-center justify-center text-sm shrink-0">{idx + 1}</div><p className="text-slate-600">{step}</p></div>
+                      ))}
+                    </div>
+                    <div className="mt-6 bg-green-50 text-green-800 p-4 rounded-lg font-bold text-center border border-green-100">პასუხი: {subTopic.exampleProblem.solution}</div>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       );
@@ -254,17 +299,35 @@ const App: React.FC = () => {
 
       return (
         <div className="animate-fadeIn pb-10 space-y-6">
-          <div className="flex items-center gap-4 mb-6">
-            <button onClick={goBackToTopics} className="p-3 rounded-xl bg-white border hover:bg-indigo-50 transition-all"><ArrowLeft size={20} /></button>
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-indigo-100 text-indigo-600 rounded-lg"><Icon size={24} /></div>
-              <h2 className="text-3xl font-bold text-slate-800">{topic.title}</h2>
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-4">
+              <button onClick={goBackToTopics} className="p-3 rounded-xl bg-white border hover:bg-indigo-50 transition-all"><ArrowLeft size={20} /></button>
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-indigo-100 text-indigo-600 rounded-lg"><Icon size={24} /></div>
+                <h2 className="text-3xl font-bold text-slate-800">{topic.title}</h2>
+              </div>
             </div>
+            
+            <button 
+              onClick={() => handleExportPdf('export-topic-grid', `${topic.title}_CheatSheet.pdf`)}
+              disabled={isExporting}
+              className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl transition-all shadow-md font-bold text-sm hover:scale-105 active:scale-95"
+            >
+              {isExporting ? <Rocket className="animate-spin" size={18} /> : <FileDown size={18} />}
+              <span className="hidden sm:inline">ფორმულების PDF</span>
+            </button>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
-            {topic.content.map((subTopic) => (
-              <MathCard key={subTopic.id} topic={subTopic} onClick={() => setSelectedSubTopicId(subTopic.id)} />
-            ))}
+
+          <div id="export-topic-grid" className="p-2">
+             <div className="mb-4 text-center hidden" data-html2canvas-ignore="false" style={{display: isExporting ? 'block' : 'none'}}>
+                <h1 className="text-2xl font-bold text-slate-900">{topic.title} - ფორმულების კრებული</h1>
+                <p className="text-slate-500">MathMaster AI</p>
+             </div>
+             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
+               {topic.content.map((subTopic) => (
+                 <MathCard key={subTopic.id} topic={subTopic} onClick={() => setSelectedSubTopicId(subTopic.id)} />
+               ))}
+             </div>
           </div>
         </div>
       );
@@ -421,7 +484,7 @@ const App: React.FC = () => {
                      <LabItem icon={BarChart} label="სტატისტიკა" onClick={() => setCurrentView(AppView.STATS_MACHINE)} />
                      <LabItem icon={Dices} label="ალბათობა" onClick={() => setCurrentView(AppView.PROBABILITY_MACHINE)} />
                      <LabItem icon={TriangleIcon} label="გეომეტრია" onClick={() => setCurrentView(AppView.GEOMETRY)} />
-                     <LabItem icon={Presentation} label="დაფა" onClick={() => setCurrentView(AppView.BOARD)} />
+                     <LabItem icon={Presentation} label="დაფა (AI Solve)" onClick={() => setCurrentView(AppView.BOARD)} />
                   </div>
                </div>
 
@@ -581,7 +644,7 @@ const App: React.FC = () => {
 
       {/* Main Area */}
       <main className="flex-1 h-[calc(100vh-64px)] md:h-screen overflow-hidden relative bg-slate-50/50">
-        <div className={`absolute inset-0 p-0 md:p-0 ${currentView === AppView.BOARD ? 'z-10 block' : 'z-0 invisible'}`}><Whiteboard /></div>
+        <div className={`absolute inset-0 p-0 md:p-0 ${currentView === AppView.BOARD ? 'z-10 block' : 'z-0 invisible'}`}><Whiteboard onAddXp={addXp} /></div>
         <div className={`absolute inset-0 p-4 md:p-8 ${currentView === AppView.CALCULATOR ? 'z-10 block' : 'z-0 invisible'}`}><Calculator /></div>
         <div className={`absolute inset-0 p-4 md:p-8 z-20 ${currentView === AppView.AI_DISCUSSION ? 'flex items-center justify-center backdrop-blur-sm bg-slate-900/50' : 'hidden'}`}>
            {currentView === AppView.AI_DISCUSSION && (

@@ -5,8 +5,10 @@ import {
   MousePointer2, Circle, Triangle, Square,
   Type, Image as ImageIcon, Layers,
   Download, Moon, Sun, Grid, Lock, Unlock, Eye, EyeOff,
-  Move, ZoomIn, ZoomOut, Palette, PenTool, X, Plus
+  Move, ZoomIn, ZoomOut, Palette, PenTool, X, Plus, Sparkles, Loader2, Copy
 } from 'lucide-react';
+import { analyzeImageWithGemini } from '../services/geminiService';
+import { MathRenderer } from './MathRenderer';
 
 // --- Types & Interfaces ---
 
@@ -49,9 +51,13 @@ interface ViewState {
   offsetY: number;
 }
 
+interface WhiteboardProps {
+  onAddXp?: (amount: number, reason?: string) => void;
+}
+
 const GRID_SIZE = 50; // 1 Math Unit = 50px
 
-export const Whiteboard: React.FC = () => {
+export const Whiteboard: React.FC<WhiteboardProps> = ({ onAddXp }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasWrapperRef = useRef<HTMLDivElement>(null); // Specific ref for the drawing area
@@ -66,7 +72,7 @@ export const Whiteboard: React.FC = () => {
   
   // Appearance State (Decoupled)
   const [bgTheme, setBgTheme] = useState<'light' | 'dark'>('light');
-  const [showGrid, setShowGrid] = useState<boolean>(false);
+  const [showGrid, setShowGrid] = useState<boolean>(true); // Default true for math context
   
   // Viewport
   const [view, setView] = useState<ViewState>({ scale: 1, offsetX: 0, offsetY: 0 });
@@ -75,7 +81,7 @@ export const Whiteboard: React.FC = () => {
   // Tools & Properties
   const [tool, setTool] = useState<ToolType>('pen');
   const [strokeColor, setStrokeColor] = useState('#000000'); 
-  const [strokeWidth, setStrokeWidth] = useState(5); // Increased default size
+  const [strokeWidth, setStrokeWidth] = useState(3);
   const [eraserSize, setEraserSize] = useState(30);
   
   // Interaction State
@@ -90,12 +96,66 @@ export const Whiteboard: React.FC = () => {
   // Math Input State
   const [mathCoord, setMathCoord] = useState({ x: '0', y: '0' });
   
+  // AI Analysis State
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analysisResult, setAnalysisResult] = useState<string | null>(null);
+  const [showAnalysis, setShowAnalysis] = useState(false);
+  
   // History
   const [history, setHistory] = useState<CanvasObject[][]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
 
   // Long Press Logic
   const longPressTimer = useRef<number | null>(null);
+
+  // Refs for Event Listeners (to avoid stale closures)
+  const viewRef = useRef(view);
+  const isNavigatingRef = useRef(isNavigating);
+
+  // Sync Refs
+  useEffect(() => { viewRef.current = view; }, [view]);
+  useEffect(() => { isNavigatingRef.current = isNavigating; }, [isNavigating]);
+
+  // --- NATIVE WHEEL LISTENER (BLOCKS SCROLL) ---
+  useEffect(() => {
+    const el = canvasWrapperRef.current;
+    if (!el) return;
+
+    const handleNativeWheel = (e: WheelEvent) => {
+      // CRITICAL: This prevents the browser page scroll entirely when cursor is on canvas
+      e.preventDefault();
+      e.stopPropagation();
+
+      // ONLY Zoom if Right Click is held (Navigation Mode)
+      if (!isNavigatingRef.current) return;
+
+      const rect = el.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+
+      const currentView = viewRef.current;
+      
+      // World calculation based on current view
+      const worldX = (x - currentView.offsetX) / currentView.scale;
+      const worldY = (y - currentView.offsetY) / currentView.scale;
+
+      const delta = -e.deltaY;
+      const scaleFactor = Math.pow(1.002, delta);
+      const newScale = Math.min(Math.max(0.1, currentView.scale * scaleFactor), 20);
+      
+      const newOffsetX = x - worldX * newScale;
+      const newOffsetY = y - worldY * newScale;
+
+      setView({ scale: newScale, offsetX: newOffsetX, offsetY: newOffsetY });
+    };
+
+    // Attaching with { passive: false } is required to allow e.preventDefault()
+    el.addEventListener('wheel', handleNativeWheel, { passive: false });
+
+    return () => {
+      el.removeEventListener('wheel', handleNativeWheel);
+    };
+  }, []);
 
   // --- Helpers ---
 
@@ -174,8 +234,8 @@ export const Whiteboard: React.FC = () => {
     let textColor = '#000000';
 
     if (bgTheme === 'dark') {
-      bgColor = '#000000'; // TRUE BLACK
-      gridColor = 'rgba(255,255,255,0.2)'; // More visible grid on black
+      bgColor = '#0f172a'; // Slate-900
+      gridColor = 'rgba(255,255,255,0.1)'; // More visible grid on black
       axisColor = '#ffffff';
       textColor = '#ffffff';
     }
@@ -214,7 +274,7 @@ export const Whiteboard: React.FC = () => {
       const origin = toScreen(0, 0);
       ctx.beginPath();
       ctx.strokeStyle = axisColor;
-      ctx.lineWidth = 2;
+      ctx.lineWidth = 2; // Thicker axis
       
       // Y Axis (Vertical) at X=0
       ctx.moveTo(origin.x, 0);
@@ -225,31 +285,33 @@ export const Whiteboard: React.FC = () => {
       ctx.lineTo(width, origin.y);
       ctx.stroke();
 
-      // Coordinate Numbers
-      ctx.fillStyle = textColor;
-      ctx.font = '10px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'top';
+      // Coordinate Numbers (Only show if scale is reasonable)
+      if (view.scale > 0.5) {
+        ctx.fillStyle = textColor;
+        ctx.font = '10px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
 
-      // X Numbers
-      for (let i = gridStartX; i <= gridEndX; i++) {
-          if (i === 0) continue;
-          const x = i * scaledGridSize + view.offsetX;
-          ctx.fillText(i.toString(), x, origin.y + 4);
-      }
+        // X Numbers
+        for (let i = gridStartX; i <= gridEndX; i += (view.scale < 0.8 ? 2 : 1)) {
+            if (i === 0) continue;
+            const x = i * scaledGridSize + view.offsetX;
+            ctx.fillText(i.toString(), x, origin.y + 4);
+        }
 
-      // Y Numbers
-      ctx.textAlign = 'right';
-      ctx.textBaseline = 'middle';
-      for (let i = gridStartY; i <= gridEndY; i++) {
-          if (i === 0) continue;
-          const y = i * scaledGridSize + view.offsetY;
-          // Mathematical Y is inverted
-          ctx.fillText((-i).toString(), origin.x - 4, y);
+        // Y Numbers
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'middle';
+        for (let i = gridStartY; i <= gridEndY; i += (view.scale < 0.8 ? 2 : 1)) {
+            if (i === 0) continue;
+            const y = i * scaledGridSize + view.offsetY;
+            // Mathematical Y is inverted
+            ctx.fillText((-i).toString(), origin.x - 4, y);
+        }
+        
+        // Origin Label
+        ctx.fillText("0", origin.x - 4, origin.y + 4);
       }
-      
-      // Origin Label
-      ctx.fillText("0", origin.x - 4, origin.y + 4);
     }
 
     // 3. Objects
@@ -365,7 +427,7 @@ export const Whiteboard: React.FC = () => {
 
   // --- Event Handlers ---
 
-  const getPointerPos = (e: React.MouseEvent | React.TouchEvent | React.WheelEvent): Point => {
+  const getPointerPos = (e: React.MouseEvent | React.TouchEvent): Point => {
     const rect = canvasWrapperRef.current?.getBoundingClientRect();
     if (!rect) return { x: 0, y: 0 };
     
@@ -426,7 +488,7 @@ export const Whiteboard: React.FC = () => {
       id: generateId(),
       type: tool,
       layerId: activeLayerId,
-      color: tool === 'eraser' ? (bgTheme === 'dark' ? '#000000' : '#ffffff') : strokeColor,
+      color: tool === 'eraser' ? (bgTheme === 'dark' ? '#0f172a' : '#ffffff') : strokeColor,
       strokeWidth: tool === 'eraser' ? eraserSize : strokeWidth,
       opacity: 1,
       points: [worldPos],
@@ -498,24 +560,6 @@ export const Whiteboard: React.FC = () => {
     setIsPanning(false);
     setIsNavigating(false);
     setCurrentStroke(null);
-  };
-
-  const handleWheel = (e: React.WheelEvent) => {
-    e.preventDefault(); 
-    e.stopPropagation();
-
-    // Only allow zooming if Right Click (Navigation Mode) is active
-    if (isNavigating) { 
-       const pos = getPointerPos(e);
-       const worldPos = toWorld(pos.x, pos.y);
-       const delta = -e.deltaY;
-       const scaleFactor = Math.pow(1.002, delta); 
-       const newScale = Math.min(Math.max(0.1, view.scale * scaleFactor), 20);
-       const newOffsetX = pos.x - worldPos.x * newScale;
-       const newOffsetY = pos.y - worldPos.y * newScale;
-       setView({ scale: newScale, offsetX: newOffsetX, offsetY: newOffsetY });
-    }
-    // Otherwise, do nothing (Block Scroll)
   };
 
   // --- Actions ---
@@ -619,8 +663,45 @@ export const Whiteboard: React.FC = () => {
       if (!canvasRef.current) return;
       const link = document.createElement('a');
       link.download = 'mathmaster-board.png';
+      // We want to render only the content, ideally, but screen capture is fine for now.
+      // To improve, we could render to a temp canvas without grid/ui/selection.
       link.href = canvasRef.current.toDataURL();
       link.click();
+  };
+
+  // --- MAGIC SOLVE (AI) ---
+  const handleMagicSolve = async () => {
+    if (!canvasRef.current || objects.length === 0) {
+       alert("დაფა ცარიელია. დახატეთ ან დაწერეთ რამე.");
+       return;
+    }
+    
+    setIsAnalyzing(true);
+    setAnalysisResult(null);
+    setShowAnalysis(true);
+
+    try {
+       const base64 = canvasRef.current.toDataURL('image/png').split(',')[1];
+       const mimeType = 'image/png';
+       
+       const result = await analyzeImageWithGemini(base64, mimeType);
+       setAnalysisResult(result);
+       
+       if (onAddXp) onAddXp(30, 'დაფის მაგიური ამოხსნა');
+
+    } catch (e) {
+       console.error("Magic Solve Error", e);
+       setAnalysisResult("შეცდომა ანალიზისას. სცადეთ თავიდან.");
+    } finally {
+       setIsAnalyzing(false);
+    }
+  };
+
+  const copyAnalysis = () => {
+     if (analysisResult) {
+        navigator.clipboard.writeText(analysisResult);
+        // Optional: Toast notification could go here
+     }
   };
 
   return (
@@ -629,7 +710,7 @@ export const Whiteboard: React.FC = () => {
       {/* 1. LEFT TOOLBAR */}
       <div className="w-16 bg-white border-r border-slate-200 flex flex-col items-center py-4 gap-2 z-20 shadow-sm overflow-y-auto no-scrollbar ui-element">
          <ToolBtn icon={MousePointer2} label="Select" active={tool === 'select'} onClick={() => setTool('select')} />
-         <ToolBtn icon={Hand} label="Pan (Hold Ctrl to Zoom)" active={tool === 'pan'} onClick={() => setTool('pan')} />
+         <ToolBtn icon={Hand} label="Pan (Hold Right Click)" active={tool === 'pan'} onClick={() => setTool('pan')} />
          <div className="w-8 h-px bg-slate-200 my-1"></div>
          <ToolBtn icon={Pen} label="Pen" active={tool === 'pen'} onClick={() => setTool('pen')} />
          <ToolBtn icon={PenTool} label="Highlighter" active={tool === 'highlighter'} onClick={() => setTool('highlighter')} />
@@ -642,6 +723,16 @@ export const Whiteboard: React.FC = () => {
          <ToolBtn icon={ImageIcon} label="Image" active={tool === 'image'} onClick={() => fileInputRef.current?.click()} />
          
          <div className="mt-auto flex flex-col gap-2">
+            {/* MAGIC SOLVE BUTTON */}
+            <button 
+               onClick={handleMagicSolve}
+               className="p-3 rounded-xl transition-all duration-300 relative group bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white shadow-lg animate-pulse hover:animate-none hover:scale-110"
+               title="Magic Solve (AI)"
+            >
+               <Sparkles size={22} fill="currentColor" />
+            </button>
+
+            <div className="w-8 h-px bg-slate-200 my-1"></div>
             <ToolBtn icon={Undo} label="Undo" onClick={undo} />
             <ToolBtn icon={Redo} label="Redo" onClick={redo} />
             <ToolBtn icon={Trash2} label="Clear All" onClick={() => { if(confirm('Clear board?')) { setObjects([]); saveToHistory(); } }} color="text-red-500" />
@@ -694,7 +785,7 @@ export const Whiteboard: React.FC = () => {
          </div>
 
          <div className="flex items-center gap-3">
-             <div className="bg-slate-50 rounded-lg p-1 flex items-center gap-2 border border-slate-200 px-2">
+             <div className="bg-slate-50 rounded-lg p-1 flex items-center gap-2 border border-slate-200 px-2 hidden md:flex">
                 <span className="text-xs font-bold text-indigo-600">Point (x,y):</span>
                 <input type="number" value={mathCoord.x} onChange={e => setMathCoord({...mathCoord, x: e.target.value})} className="w-12 h-8 border rounded px-1 text-sm bg-white text-slate-900" placeholder="X" />
                 <input type="number" value={mathCoord.y} onChange={e => setMathCoord({...mathCoord, y: e.target.value})} className="w-12 h-8 border rounded px-1 text-sm bg-white text-slate-900" placeholder="Y" />
@@ -705,7 +796,7 @@ export const Whiteboard: React.FC = () => {
       </div>
 
       {/* 3. LAYERS PANEL */}
-      <div className="absolute top-20 right-4 w-60 bg-white rounded-xl shadow-xl border border-slate-200 z-20 flex flex-col overflow-hidden max-h-[300px] ui-element">
+      <div className="absolute top-20 right-4 w-60 bg-white rounded-xl shadow-xl border border-slate-200 z-20 flex flex-col overflow-hidden max-h-[300px] ui-element hidden md:flex">
          <div className="p-3 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
             <h4 className="font-bold text-slate-700 flex items-center gap-2 text-sm"><Layers size={16}/> Layers</h4>
             <button onClick={() => setLayers([...layers, { id: generateId(), name: `Layer ${layers.length+1}`, visible: true, locked: false }])} className="p-1 hover:bg-slate-200 rounded"><Plus size={14}/></button>
@@ -724,14 +815,42 @@ export const Whiteboard: React.FC = () => {
          </div>
       </div>
 
-      {/* 4. CANVAS AREA */}
+      {/* 4. ANALYSIS RESULT FLOATING PANEL */}
+      {showAnalysis && (
+         <div className="absolute top-20 right-4 left-20 md:left-auto md:w-96 bg-white rounded-2xl shadow-2xl border border-indigo-200 z-30 flex flex-col max-h-[80vh] animate-in slide-in-from-right-10 fade-in duration-300 ui-element">
+            <div className="p-4 bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-t-2xl flex justify-between items-center">
+               <h3 className="font-bold flex items-center gap-2"><Sparkles size={18}/> Magic Solve AI</h3>
+               <button onClick={() => setShowAnalysis(false)} className="p-1 hover:bg-white/20 rounded-full transition-colors"><X size={18}/></button>
+            </div>
+            <div className="p-6 overflow-y-auto flex-1 custom-scrollbar">
+               {isAnalyzing ? (
+                  <div className="flex flex-col items-center justify-center py-10 text-slate-500 gap-4">
+                     <Loader2 size={32} className="animate-spin text-indigo-600" />
+                     <p className="font-medium">დაფის ანალიზი მიმდინარეობს...</p>
+                  </div>
+               ) : (
+                  <div className="prose prose-sm prose-slate max-w-none">
+                     {analysisResult ? <MathRenderer text={analysisResult} /> : <p className="text-red-500">შედეგი ვერ მოიძებნა.</p>}
+                  </div>
+               )}
+            </div>
+            {!isAnalyzing && analysisResult && (
+               <div className="p-3 border-t border-slate-100 bg-slate-50 rounded-b-2xl flex justify-end">
+                  <button onClick={copyAnalysis} className="flex items-center gap-2 text-xs font-bold text-slate-500 hover:text-indigo-600 px-3 py-2 hover:bg-white rounded-lg transition-all border border-transparent hover:border-slate-200 hover:shadow-sm">
+                     <Copy size={14} /> კოპირება
+                  </button>
+               </div>
+            )}
+         </div>
+      )}
+
+      {/* 5. CANVAS AREA */}
       <div 
         ref={canvasWrapperRef}
         className="flex-1 relative cursor-none touch-none bg-black overflow-hidden" 
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
-        onWheel={handleWheel}
         onTouchStart={handleMouseDown}
         onTouchMove={handleMouseMove}
         onTouchEnd={handleMouseUp}
@@ -758,7 +877,7 @@ export const Whiteboard: React.FC = () => {
         )}
       </div>
 
-      {/* 5. BOTTOM BAR */}
+      {/* 6. BOTTOM BAR */}
       <div className="absolute bottom-4 left-20 bg-white px-4 py-2 rounded-full shadow-lg border border-slate-200 flex items-center gap-4 z-20 text-xs font-mono text-slate-600 ui-element">
          <div className="flex items-center gap-2">
             <button onClick={() => setView(v => ({...v, scale: v.scale * 0.9}))} className="p-1 hover:bg-slate-100 rounded"><ZoomOut size={14}/></button>

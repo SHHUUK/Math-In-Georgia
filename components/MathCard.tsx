@@ -94,7 +94,7 @@ export const MathCard: React.FC<MathCardProps> = ({ topic, onClick }) => {
         transform transition-all duration-300 ease-out
         hover:scale-[1.02] hover:-translate-y-1 
         hover:shadow-xl hover:shadow-indigo-500/20 hover:border-indigo-300 
-        flex flex-col group h-full 
+        flex flex-col group h-full break-inside-avoid
         ${onClick ? 'cursor-pointer' : ''}`}
     >
       <div className={`h-48 overflow-hidden relative ${!showImage ? `bg-gradient-to-br ${gradientClass}` : 'bg-indigo-50'}`}>
@@ -123,7 +123,7 @@ export const MathCard: React.FC<MathCardProps> = ({ topic, onClick }) => {
 
         {/* Explicit Generate Button if Image Missing */}
         {!showImage && (
-          <div className={`absolute inset-0 flex flex-col items-center justify-center z-20 p-4 text-center transition-all duration-500 ${isGenerating ? 'bg-indigo-900/40 backdrop-blur-sm' : ''}`}>
+          <div className={`absolute inset-0 flex flex-col items-center justify-center z-20 p-4 text-center transition-all duration-500 ${isGenerating ? 'bg-indigo-900/40 backdrop-blur-sm' : ''} group-hover:opacity-100 opacity-0`} data-html2canvas-ignore>
             {isGenerating ? (
                <div className="flex flex-col items-center gap-2">
                  <div className="relative">
@@ -158,6 +158,7 @@ export const MathCard: React.FC<MathCardProps> = ({ topic, onClick }) => {
               onClick={handleCopy}
               className="absolute top-2 right-2 p-1.5 bg-white/90 backdrop-blur-sm border border-slate-200 rounded-lg text-slate-500 hover:text-indigo-600 hover:border-indigo-300 shadow-sm opacity-0 group-hover/formula:opacity-100 transition-all duration-200 focus:opacity-100 focus:outline-none z-10"
               title="ფორმულის კოპირება"
+              data-html2canvas-ignore
             >
               {copied ? <Check size={14} className="text-green-500" /> : <Copy size={14} />}
             </button>
@@ -169,7 +170,7 @@ export const MathCard: React.FC<MathCardProps> = ({ topic, onClick }) => {
         </div>
 
         {onClick && (
-          <div className="pt-2 mt-auto flex items-center justify-between text-indigo-600 font-semibold text-sm group-hover:text-indigo-700 transition-colors">
+          <div className="pt-2 mt-auto flex items-center justify-between text-indigo-600 font-semibold text-sm group-hover:text-indigo-700 transition-colors" data-html2canvas-ignore>
             <div className="flex items-center">
               <BookOpen size={16} className="mr-2" />
               სრულად ნახვა
