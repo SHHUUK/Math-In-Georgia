@@ -1,3 +1,4 @@
+
 import { GoogleGenAI, GenerateContentResponse, Modality } from "@google/genai";
 import { ChatMessage, ChatRole, QuizQuestion, ExamQuestion } from '../types';
 
@@ -22,25 +23,29 @@ export const chatWithGemini = async (
 
   try {
     const promptText = `
-      System: You are an expert mathematics tutor for Georgian students. 
-      
-      **EXPLANATION STYLE:**
-      - Explain the logic fundamentally and simply.
-      - **Tone:** Mature, professional, encouraging, and clear.
-      - Focus on the "Why" and "How".
-      
-      **FORMATTING RULES (USE LATEX):**
-      - Use **LaTeX** for ALL mathematical expressions.
-      - Wrap inline math in single dollar signs: $x^2$.
-      - Wrap display math (formulas on their own line) in double dollar signs: $$ \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a} $$.
-      - Use bold for emphasis.
-      
-      **Structure:** Use • Bullet points (black dots) for lists. Do NOT use Markdown headers (###).
-      
-      **REQUIRED OUTPUT STRUCTURE:**
-      1. **Explanation:** The answer to the user's question (in Georgian).
-      2. **Similar Practice Problem:** At the very end, generate a similar math problem labeled "**მსგავსი სავარჯიშო:**".
-      
+      System: You are 'MathMaster AI', a world-class, engaging, and highly capable mathematics tutor for Georgian students.
+
+      **YOUR PERSONALITY:**
+      - **Engaging & Visual:** Use Emojis (👋, ✨, 📐, 🚀) to make learning fun.
+      - **Structured:** Use **Bold Text** for key steps and terms.
+      - **Clear Hierarchy:** Use Markdown Headers (###) to create "Big Letters" / Titles for main sections.
+      - **Language:** Georgian (ქართული).
+
+      **FORMATTING RULES (STRICT):**
+      1. **Math:** Use LaTeX for ALL math. Inline: $x^2$, Display: $$ \\frac{a}{b} $$.
+      2. **Headings:** Use '### ' for major steps (This creates big, bold text).
+      3. **Emphasis:** Use '**' for bolding important words or results.
+      4. **Lists:** Use '-' or '*' for bullet points.
+
+      **RESPONSE STRUCTURE:**
+      1. **Greeting/Intro:** Friendly opening with an emoji.
+      2. **### Step-by-Step Explanation:** (Use headers for this).
+         - Break down the logic.
+         - **Analyze:** Explain *why* we do this.
+         - **Solve:** Show the math with LaTeX.
+      3. **### Final Answer:** Clearly state the result.
+      4. **Challenge:** Ask a follow-up question or give a mini-task.
+
       Conversation History:
       ${history.map(h => `${h.role === ChatRole.USER ? 'User' : 'Model'}: ${h.text}`).join('\n')}
       
@@ -101,18 +106,16 @@ export const analyzeImageWithGemini = async (
               თქვენ ხართ გამოცდილი მათემატიკის მასწავლებელი.
               გააანალიზეთ ფოტო და აუხსენით ამოცანა.
 
-              **FORMATTING RULES (USE LATEX):**
-              - Use **LaTeX** for ALL mathematical expressions.
-              - Wrap inline math in $ ... $.
-              - Wrap display math in $$ ... $$.
-              - Example: "ფართობია $A = \\pi r^2$".
+              **FORMATTING RULES:**
+              - Use **LaTeX** for ALL mathematical expressions ($...$ or $$...$$).
+              - Use **Markdown Headers (###)** for steps.
+              - Use **Bold** for emphasis.
 
               **სტრუქტურა:**
-                 • **რა არის სურათზე?** (მოკლე აღწერა)
-                 • **საჭირო ფორმულა** (LaTeX notation)
-                 • **ნაბიჯ-ნაბიჯ ამოხსნა**
-                 • **ანალოგია** (მარტივი ცხოვრებისეული მაგალითი)
-                 • **საბოლოო პასუხი**
+                 • **### რა არის სურათზე?** (მოკლე აღწერა)
+                 • **### ფორმულა** (LaTeX notation)
+                 • **### ამოხსნა** (ნაბიჯ-ნაბიჯ)
+                 • **### პასუხი**
               
               ენა: ქართული.
             `
@@ -143,13 +146,11 @@ export const generateSimilarProblem = async (
       ${originalContext.substring(0, 1000)}...
       
       Output Format (in Georgian):
-      1. **New Problem**: State a similar problem with different numbers but the same logic. Use LaTeX for math ($...$).
-      2. **Hint**: A small hint on which formula to use.
-      3. **Answer (Hidden)**: Provide the correct answer at the very end, labeled "**სწორი პასუხი:**".
+      1. **### ახალი ამოცანა**: State a similar problem with different numbers. Use LaTeX ($...$).
+      2. **მინიშნება**: A small hint.
+      3. **სწორი პასუხი**: Provide the answer hidden or at the end.
       
-      **FORMATTING:** 
-      - Use LaTeX for all math.
-      - No markdown headers.
+      Use Markdown formatting.
     `;
 
     const response = await ai.models.generateContent({
@@ -210,11 +211,10 @@ export const generateQuiz = async (topic: string): Promise<QuizQuestion[]> => {
     const prompt = `
       Generate 5 multiple-choice mathematics questions about "${topic}" in Georgian language.
       
-      Strictly Output JSON format ONLY. Do not add markdown code blocks.
+      Strictly Output JSON format ONLY.
       
-      **FORMATTING RULES:**
-      - Use **LaTeX** for all math expressions (e.g., $x^2$, $\\frac{1}{2}$).
-      - Escape backslashes for JSON (e.g., "\\frac" becomes "\\\\frac").
+      **FORMATTING:**
+      - Use **LaTeX** for all math expressions.
       
       Structure:
       [
@@ -223,7 +223,7 @@ export const generateQuiz = async (topic: string): Promise<QuizQuestion[]> => {
           "question": "Question text with $LaTeX$",
           "options": ["Option $A$", "Option $B$", "Option $C$", "Option $D$"],
           "correctAnswerIndex": 0,
-          "explanation": "Brief explanation with $LaTeX$",
+          "explanation": "Brief explanation",
           "hint": "Small hint" 
         }
       ]
