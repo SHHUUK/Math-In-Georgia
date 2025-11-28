@@ -12,52 +12,31 @@ export const MathRenderer: React.FC<MathRendererProps> = ({ text, className = ''
   useEffect(() => {
     if (!containerRef.current) return;
 
-    // Check if KaTeX is loaded from the CDN
-    const katex = (window as any).katex;
-    if (!katex) {
-      // Fallback if KaTeX isn't loaded yet
-      containerRef.current.innerText = text;
-      return;
-    }
+    // Set the inner HTML
+    // We treat newlines as <br> for non-math text mostly, 
+    // but MathJax will handle the $...$ parts.
+    // To be safe, we just set the text content and let MathJax parse the whole block.
+    // However, simply setting innerText loses line breaks in the UI.
+    
+    // Strategy: Split by newlines, wrap in divs, then let MathJax process.
+    // Or simpler: Just set innerHTML with converted newlines and let MathJax search.
+    
+    const formattedText = text
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/\n/g, "<br />");
 
-    // Advanced Regex to split by $$...$$ (display) or $...$ (inline)
-    // We treat the AI response as a mix of text and LaTeX
-    const parts = text.split(/(\$\$[\s\S]*?\$\$|\$[\s\S]*?\$)/g);
-    
-    containerRef.current.innerHTML = '';
-    
-    parts.forEach(part => {
-      const span = document.createElement('span');
-      
-      if (part.startsWith('$$') && part.endsWith('$$')) {
-        // Display Math
-        try {
-          katex.render(part.slice(2, -2), span, { displayMode: true, throwOnError: false });
-        } catch (e) {
-          span.innerText = part;
-        }
-      } else if (part.startsWith('$') && part.endsWith('$')) {
-        // Inline Math
-        try {
-          katex.render(part.slice(1, -1), span, { displayMode: false, throwOnError: false });
-        } catch (e) {
-          span.innerText = part;
-        }
-      } else {
-        // Plain Text - handle newlines
-        // We replace \n with <br> for plain text parts to preserve formatting
-        const lines = part.split('\n');
-        lines.forEach((line, i) => {
-           span.appendChild(document.createTextNode(line));
-           if (i < lines.length - 1) span.appendChild(document.createElement('br'));
-        });
-      }
-      containerRef.current?.appendChild(span);
-    });
+    containerRef.current.innerHTML = formattedText;
+
+    // Trigger MathJax Typeset
+    if ((window as any).MathJax && (window as any).MathJax.typesetPromise) {
+      (window as any).MathJax.typesetPromise([containerRef.current]).catch((err: any) => console.error(err));
+    }
 
   }, [text]);
 
   const Tag = inline ? 'span' : 'div';
-  // We use a div/span ref to manually manage the DOM content for KaTeX
+  
   return <Tag ref={containerRef} className={`${className} ${inline ? 'inline' : ''}`} />;
 };

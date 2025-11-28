@@ -1,45 +1,13 @@
-
 import React, { useState } from 'react';
 import { Copy, Check, BookOpen, ArrowRight, Wand2, Loader2 } from 'lucide-react';
 import { MathSubTopic } from '../types';
 import { generateMathIllustration } from '../services/geminiService';
+import { MathRenderer } from './MathRenderer';
 
 interface MathCardProps {
   topic: MathSubTopic;
   onClick?: () => void;
 }
-
-const formatMathToUnicode = (text: string) => {
-  if (!text) return '';
-
-  // Superscript mapping
-  const superscripts: Record<string, string> = {
-    '0': '⁰', '1': '¹', '2': '²', '3': '³', '4': '⁴',
-    '5': '⁵', '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹',
-    'n': 'ⁿ', 'x': 'ˣ', 'y': 'ʸ', '+': '⁺', '-': '⁻',
-    '(': '⁽', ')': '⁾'
-  };
-
-  return text
-    // Common symbols
-    .replace(/\bsqrt\b/gi, '√')
-    .replace(/\bpi\b/gi, 'π')
-    .replace(/\bdelta\b/gi, 'Δ')
-    .replace(/\btheta\b/gi, 'θ')
-    .replace(/\binfinity\b/gi, '∞')
-    .replace(/!=/g, '≠')
-    .replace(/<=/g, '≤')
-    .replace(/>=/g, '≥')
-    .replace(/->/g, '→')
-    .replace(/\*/g, '·')
-    // Fractions and Special Powers
-    .replace(/\^1\/2/g, '½')
-    .replace(/\^1\/3/g, '⅓')
-    // Generic Superscript replacer for ^2, ^n, ^(n+1)
-    .replace(/\^([0-9nxy+\-()]+)/g, (_, char) => {
-      return char.split('').map((c: string) => superscripts[c] || c).join('');
-    });
-};
 
 export const MathCard: React.FC<MathCardProps> = ({ topic, onClick }) => {
   const [copied, setCopied] = useState(false);
@@ -83,9 +51,11 @@ export const MathCard: React.FC<MathCardProps> = ({ topic, onClick }) => {
   // Determine what image to show: Generated > Provided URL > Fallback
   const showImage = generatedImage || (!imageError && topic.imageUrl);
 
-  // Prepare the formula text
+  // Prepare the formula text.
+  // With MathJax, we can just pass the formula directly. 
+  // We wrap it in $$ to ensure display mode if it's not already.
   const rawFormula = topic.formula ? topic.formula.split('\n')[0] + (topic.formula.includes('\n') ? '\n...' : '') : '';
-  const displayFormula = formatMathToUnicode(rawFormula);
+  const displayFormula = rawFormula.startsWith('$') ? rawFormula : `$$ ${rawFormula} $$`;
 
   return (
     <div 
@@ -150,9 +120,10 @@ export const MathCard: React.FC<MathCardProps> = ({ topic, onClick }) => {
       <div className="p-6 flex-1 flex flex-col gap-4">
         {topic.formula && (
           <div className="relative group/formula">
-            <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 group-hover:border-indigo-200 group-hover:shadow-sm transition-all duration-300 font-mono text-indigo-800 overflow-x-auto math-formula shadow-inner pr-10">
-              {/* Increased font size here */}
-              <pre className="whitespace-pre-wrap font-bold font-mono font-feature-settings-tnum text-xl md:text-2xl">{displayFormula}</pre>
+            <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 group-hover:border-indigo-200 group-hover:shadow-sm transition-all duration-300 text-indigo-800 overflow-x-auto math-formula shadow-inner pr-10 min-h-[60px] flex items-center">
+              <div className="text-xl font-bold w-full">
+                 <MathRenderer text={displayFormula} />
+              </div>
             </div>
             <button
               onClick={handleCopy}

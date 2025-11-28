@@ -1,4 +1,3 @@
-
 import { GoogleGenAI, GenerateContentResponse, Modality } from "@google/genai";
 import { ChatMessage, ChatRole, QuizQuestion, ExamQuestion } from '../types';
 
@@ -30,19 +29,11 @@ export const chatWithGemini = async (
       - **Tone:** Mature, professional, encouraging, and clear.
       - Focus on the "Why" and "How".
       
-      **CRITICAL FORMATTING RULES (STRICTLY NO LATEX):**
-      Do not use LaTeX formatting, TeX commands, or anything inside dollar signs.
-      Write all mathematical expressions in normal everyday math notation.
-
-      Use:
-      - Normal fraction format like 3/7, 12/5, a/b — no \\frac{}.
-      - Exponents written normally like x², a³, 10⁵ — no ^ symbols unless absolutely necessary.
-      - Square roots written as √x, √(x+4) — no \\sqrt{}.
-      
-      Do not output any LaTeX commands such as \\cdot, \\times, \\dot{x}, \\sum, or \\sqrt.
-      Do not wrap anything in $ $ or $$ $$.
-      
-      Always write clean, readable, non-LaTeX math, similar to how it appears in a textbook for students.
+      **FORMATTING RULES (USE LATEX):**
+      - Use **LaTeX** for ALL mathematical expressions.
+      - Wrap inline math in single dollar signs: $x^2$.
+      - Wrap display math (formulas on their own line) in double dollar signs: $$ \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a} $$.
+      - Use bold for emphasis.
       
       **Structure:** Use • Bullet points (black dots) for lists. Do NOT use Markdown headers (###).
       
@@ -110,15 +101,15 @@ export const analyzeImageWithGemini = async (
               თქვენ ხართ გამოცდილი მათემატიკის მასწავლებელი.
               გააანალიზეთ ფოტო და აუხსენით ამოცანა.
 
-              **FORMATTING RULES (STRICTLY NO LATEX):**
-              Do not use LaTeX formatting, TeX commands, or anything inside dollar signs.
-              Write all mathematical expressions in normal everyday math notation (e.g., 1/2, x², √x).
-              Do not output any LaTeX commands such as \\frac, \\sqrt, etc.
-              Do not wrap anything in $ $ or $$ $$.
+              **FORMATTING RULES (USE LATEX):**
+              - Use **LaTeX** for ALL mathematical expressions.
+              - Wrap inline math in $ ... $.
+              - Wrap display math in $$ ... $$.
+              - Example: "ფართობია $A = \\pi r^2$".
 
               **სტრუქტურა:**
                  • **რა არის სურათზე?** (მოკლე აღწერა)
-                 • **საჭირო ფორმულა** (Clean math notation)
+                 • **საჭირო ფორმულა** (LaTeX notation)
                  • **ნაბიჯ-ნაბიჯ ამოხსნა**
                  • **ანალოგია** (მარტივი ცხოვრებისეული მაგალითი)
                  • **საბოლოო პასუხი**
@@ -152,13 +143,12 @@ export const generateSimilarProblem = async (
       ${originalContext.substring(0, 1000)}...
       
       Output Format (in Georgian):
-      1. **New Problem**: State a similar problem with different numbers but the same logic.
+      1. **New Problem**: State a similar problem with different numbers but the same logic. Use LaTeX for math ($...$).
       2. **Hint**: A small hint on which formula to use.
       3. **Answer (Hidden)**: Provide the correct answer at the very end, labeled "**სწორი პასუხი:**".
       
       **FORMATTING:** 
-      - Do not use LaTeX formatting, TeX commands, or anything inside dollar signs.
-      - Write all mathematical expressions in normal everyday math notation (1/2, x², √x).
+      - Use LaTeX for all math.
       - No markdown headers.
     `;
 
@@ -223,18 +213,17 @@ export const generateQuiz = async (topic: string): Promise<QuizQuestion[]> => {
       Strictly Output JSON format ONLY. Do not add markdown code blocks.
       
       **FORMATTING RULES:**
-      - Do not use LaTeX formatting, TeX commands, or anything inside dollar signs.
-      - Write all mathematical expressions in normal everyday math notation (1/2, x², √x).
-      - Normal fraction format like 3/7, a/b.
+      - Use **LaTeX** for all math expressions (e.g., $x^2$, $\\frac{1}{2}$).
+      - Escape backslashes for JSON (e.g., "\\frac" becomes "\\\\frac").
       
       Structure:
       [
         {
           "id": "q1",
-          "question": "Question text",
-          "options": ["Option A", "Option B", "Option C", "Option D"],
+          "question": "Question text with $LaTeX$",
+          "options": ["Option $A$", "Option $B$", "Option $C$", "Option $D$"],
           "correctAnswerIndex": 0,
-          "explanation": "Brief explanation",
+          "explanation": "Brief explanation with $LaTeX$",
           "hint": "Small hint" 
         }
       ]
@@ -279,9 +268,8 @@ export const generateMockExam = async (): Promise<ExamQuestion[]> => {
       - Questions 36-40: Open-Ended (3 or 4 Points each). No options.
       
       **FORMATTING RULES:**
-      - Do not use LaTeX formatting, TeX commands, or anything inside dollar signs.
-      - Write all mathematical expressions in normal everyday math notation (1/2, x², √x).
-      - No \\frac, \\sqrt, etc.
+      - Use **LaTeX** for all math expressions.
+      - Escape backslashes for JSON (e.g. "\\\\sqrt{x}").
       
       JSON Schema:
       [
@@ -289,8 +277,8 @@ export const generateMockExam = async (): Promise<ExamQuestion[]> => {
           "id": 1,
           "type": "mc",
           "points": 1,
-          "text": "Question text",
-          "options": ["A", "B", "C", "D"],
+          "text": "Question text with $LaTeX$",
+          "options": ["$A$", "$B$", "$C$", "$D$"],
           "correctAnswer": "Index (0-3) as STRING"
         },
         ...
@@ -298,7 +286,7 @@ export const generateMockExam = async (): Promise<ExamQuestion[]> => {
           "id": 36,
           "type": "open",
           "points": 3,
-          "text": "Problem text",
+          "text": "Problem text with $LaTeX$",
           "rubric": "Grading criteria"
         }
       ]
@@ -345,7 +333,7 @@ export const gradeOpenEndedQuestion = async (
       
       Evaluate the answer.
       - Feedback MUST be in Georgian.
-      - **NO LaTeX in feedback**. Use standard text math notation (x², 1/2).
+      - Use **LaTeX** for math notation in feedback.
       
       Output JSON ONLY:
       {
@@ -405,38 +393,18 @@ export const solveGeometryProblem = async (problemText: string, base64Image?: st
       Output JSON ONLY.
       
       **CRITICAL DIAGRAM RULES:**
-      1. **Completeness:** DRAW EVERYTHING described. If it says "Triangle with height", draw the height line.
-      2. **Coordinates:**
-         - Use a canvas size of 800x600.
-         - **SAFE ZONE:** Keep X between 50 and 750. Keep Y between 50 and 550.
-         - **Scaling:** Ensure the shape fills the center of the canvas. Do NOT draw tiny shapes.
-         - y-axis increases downwards (SVG style).
-      3. **Labeling (UNICODE ONLY):**
-         - Label ALL vertices (A, B, C...).
-         - Label angles using '°' (e.g., "30°", "90°") near vertices.
-         - Label side lengths using 'cm' (e.g., "5cm", "10cm") near the middle of lines.
-         - **Use Unicode '∠'** for angle text in explanations (e.g. "∠ABC").
-         - **Use Unicode '△'** for triangles (e.g. "△ABC").
-         - **NO LaTeX** (No \\angle, No $, No words like "Angle A").
+      1. **Completeness:** DRAW EVERYTHING described.
+      2. **Coordinates:** 800x600 canvas. SAFE ZONE: X[50-750], Y[50-550].
+      3. **Labeling:** Label all vertices.
+      
+      **TEXT RULES:**
+      - Use **LaTeX** for math in explanation and steps (e.g. $\\angle ABC = 90^\\circ$).
       
       JSON Structure:
       {
-        "shapes": [
-           { 
-             "id": "s1", 
-             "type": "polygon", 
-             "points": [{"x": 100, "y": 300, "label": "A"}, {"x": 300, "y": 300, "label": "B 60°"}, {"x": 200, "y": 126, "label": "C"}],
-             "properties": { "label": "△ABC" }
-           },
-           {
-             "id": "l1",
-             "type": "line",
-             "points": [{"x": 100, "y": 300, "label": ""}, {"x": 200, "y": 126, "label": "5cm"}], // Label on 2nd point approximates midpoint label
-             "properties": {}
-           }
-        ],
-        "steps": ["Step 1: Find ∠B...", "Step 2: Use sine rule..."],
-        "explanation": "Brief explanation using ∠ notation."
+        "shapes": [ ... ],
+        "steps": ["Step 1 with $LaTeX$...", "Step 2..."],
+        "explanation": "Brief explanation with $LaTeX$."
       }
       
       Language: Georgian for text fields.
@@ -447,7 +415,7 @@ export const solveGeometryProblem = async (problemText: string, base64Image?: st
     if (base64Image) {
       contents.unshift({
         inlineData: {
-          mimeType: 'image/png', // Assuming PNG or similar logic
+          mimeType: 'image/png', 
           data: base64Image
         }
       });
@@ -484,16 +452,16 @@ export const processFunctionStepByStep = async (func: string, val: string): Prom
     const prompt = `
       Evaluate the function "${func}" for x = ${val}.
       
-      Provide a step-by-step breakdown of the calculation procedure.
+      Provide a step-by-step breakdown.
       Language: Georgian.
       
       **FORMATTING RULES:**
-      - Strictly Unicode math (x², 3·5, 1/2). No LaTeX.
+      - Use **LaTeX** for math expressions.
       
       Output JSON ONLY:
       {
-        "result": "Final Answer (string)",
-        "steps": ["Step 1 description", "Step 2 description", "Step 3 description"]
+        "result": "Final Answer (string with LaTeX if needed)",
+        "steps": ["Step 1 with $LaTeX$", "Step 2..."]
       }
     `;
 
@@ -623,10 +591,10 @@ export const generateEducationalVideo = async (topic: string): Promise<string | 
   try {
     // UPDATED PROMPT: Cinematic, highly detailed educational content with blackboard aesthetics
     const prompt = `
-      Educational video of a blackboard lesson about '${topic}'. 
-      Close-up shots of white chalk writing complex formulas, drawing graphs, and solving equations on a dark green board. 
-      The content appears dynamically as if being written by an invisible hand. 
-      Cinematic lighting, high resolution, realistic texture, time-lapse style.
+      Cinematic, highly detailed educational video close-up of a blackboard. 
+      White chalk formulas, graphs, and equations about '${topic}' appearing dynamically.
+      The writing is elegant and scientific. Dark green board texture.
+      Realistic lighting, 4k quality, educational atmosphere.
     `;
 
     let operation = await ai.models.generateVideos({
