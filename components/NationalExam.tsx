@@ -223,7 +223,7 @@ export const NationalExam: React.FC<NationalExamProps> = ({ onAddXp }) => {
      const partialCount = result.details.filter(d => d.score > 0 && d.score < d.maxPoints).length;
 
      return (
-       <div className="max-w-5xl mx-auto p-4 md:p-8 animate-fadeIn pb-20 font-sans">
+       <div className="max-w-5xl mx-auto p-4 md:p-8 animate-fadeIn pb-8 font-sans">
          <div className="bg-white p-8 rounded-3xl shadow-xl border border-slate-200 mb-8 text-center relative overflow-hidden">
             <div className={`absolute top-0 left-0 w-full h-3 ${passStatus ? 'bg-green-500' : 'bg-red-500'}`}></div>
             <div className="flex justify-between items-start mb-6 relative z-10">

@@ -218,7 +218,7 @@ const App: React.FC = () => {
       if (!topic || !subTopic) return null;
 
       return (
-        <div className="animate-fadeIn pb-20 max-w-4xl mx-auto">
+        <div className="animate-fadeIn pb-10 max-w-4xl mx-auto">
           <div className="flex items-center justify-between mb-8">
             <div className="flex items-center gap-4">
               <button onClick={goBackToSubTopics} className="p-2 rounded-xl bg-white border hover:bg-indigo-50 transition-all"><ArrowLeft size={20} /></button>
@@ -336,7 +336,7 @@ const App: React.FC = () => {
     // NEW: ALL TOPICS VIEW (Expanded Library)
     if (viewAllTopics) {
        return (
-         <div className="animate-fadeIn pb-20 space-y-6">
+         <div className="animate-fadeIn pb-8 space-y-6">
             <div className="flex items-center gap-4 mb-6">
                <button onClick={handleBackFromAllTopics} className="p-3 rounded-xl bg-white border hover:bg-indigo-50 transition-all"><ArrowLeft size={20} /></button>
                <div>
@@ -376,7 +376,7 @@ const App: React.FC = () => {
 
     // LEVEL 1: REIMAGINED DASHBOARD
     return (
-      <div className="space-y-8 animate-fadeIn pb-20">
+      <div className="space-y-8 animate-fadeIn pb-8">
          {/* 1. Welcome & Hero */}
          <div className="bg-gradient-to-r from-indigo-700 via-violet-700 to-indigo-800 rounded-3xl p-8 text-white shadow-xl relative overflow-hidden">
             {/* Abstract Shapes */}
@@ -551,7 +551,7 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row font-sans text-slate-900">
+    <div className="h-screen w-full bg-slate-50 flex flex-col md:flex-row font-sans text-slate-900 overflow-hidden">
       
       {/* --- TOAST NOTIFICATION --- */}
       {notification && (
@@ -643,7 +643,7 @@ const App: React.FC = () => {
       </aside>
 
       {/* Main Area */}
-      <main className="flex-1 h-[calc(100vh-64px)] md:h-screen overflow-hidden relative bg-slate-50/50">
+      <main className="flex-1 h-full overflow-hidden relative bg-slate-50/50">
         <div className={`absolute inset-0 p-0 md:p-0 ${currentView === AppView.BOARD ? 'z-10 block' : 'z-0 invisible'}`}><Whiteboard onAddXp={addXp} /></div>
         <div className={`absolute inset-0 p-4 md:p-8 ${currentView === AppView.CALCULATOR ? 'z-10 block' : 'z-0 invisible'}`}><Calculator /></div>
         <div className={`absolute inset-0 p-4 md:p-8 z-20 ${currentView === AppView.AI_DISCUSSION ? 'flex items-center justify-center backdrop-blur-sm bg-slate-900/50' : 'hidden'}`}>
