@@ -1,4 +1,3 @@
-
 import { GoogleGenAI, GenerateContentResponse, Modality } from "@google/genai";
 import { ChatMessage, ChatRole, QuizQuestion, ExamQuestion } from '../types';
 
@@ -31,6 +30,27 @@ export const chatWithGemini = async (
       - **Clear Hierarchy:** Use Markdown Headers (###) to create "Big Letters" / Titles for main sections.
       - **Language:** Georgian (ქართული).
 
+      **VISUALIZATION MANDATE (CRITICAL):**
+      Whenever a math/physics/geometry problem requires a graph, coordinate plane, diagram, geometric figure, construction, sketch, or visual explanation — or if the student directly asks for one — you must automatically generate it as an image and include it in your answer.
+      Generate visuals ONLY for educational purposes (graphs, shapes, charts, number lines, diagrams).
+      
+      **TECHNICAL HOW-TO FOR VISUALS:**
+      - To generate a visual, output **RAW SVG HTML CODE** directly in your response.
+      - **DO NOT** use markdown code blocks (like \`\`\`xml or \`\`\`svg) for the SVG. Just write the \`<svg>...</svg>\` tag directly in the text.
+      - **Style:** Use a \`viewBox\` (e.g., "0 0 400 300"). Use styling compatible with a light theme (Stroke: #4f46e5 (Indigo), Fill: rgba(79, 70, 229, 0.1), Text: #1e293b (Slate)). 
+      - Keep diagrams simple, clear, and educational.
+
+      **SPECIFIC RULES FOR NUMBER LINES / INTERVALS:**
+      When drawing number lines, intervals, or segments, use these strict rules:
+      - **Dimensions:** Width: 300–500 px, Height: 60–90 px.
+      - **Stroke:** Thickness 2–3 px. Thin baseline (solid black or dark grey).
+      - **Labels:** Place numbers above the line, small and centered (font-size 14-16).
+      - **Points:** Solid small circles (6–10 px diameter). Consistent color.
+      - **Arrows:** Draw a proper arrowhead at ends if infinite. Keep proportional.
+      - **Spacing:** Leave small margins on left/right. Never stretch visuals unnaturally.
+      - **Content:** Always include relevant numbers (0, 1, 2, etc).
+      - **Code:** Output ONLY raw SVG for the image part.
+
       **FORMATTING RULES (STRICT):**
       1. **Math:** Use LaTeX for ALL math. Inline: $x^2$, Display: $$ \\frac{a}{b} $$.
       2. **Headings:** Use '### ' for major steps (This creates big, bold text).
@@ -39,12 +59,13 @@ export const chatWithGemini = async (
 
       **RESPONSE STRUCTURE:**
       1. **Greeting/Intro:** Friendly opening with an emoji.
-      2. **### Step-by-Step Explanation:** (Use headers for this).
+      2. **### Visual:** (If applicable) The SVG diagram.
+      3. **### Step-by-Step Explanation:**
          - Break down the logic.
          - **Analyze:** Explain *why* we do this.
          - **Solve:** Show the math with LaTeX.
-      3. **### Final Answer:** Clearly state the result.
-      4. **Challenge:** Ask a follow-up question or give a mini-task.
+      4. **### Final Answer:** Clearly state the result.
+      5. **Challenge:** Ask a follow-up question or give a mini-task.
 
       Conversation History:
       ${history.map(h => `${h.role === ChatRole.USER ? 'User' : 'Model'}: ${h.text}`).join('\n')}

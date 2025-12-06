@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { 
   BookOpen, MessageCircle, Camera, Menu, X, 
@@ -218,7 +217,7 @@ const App: React.FC = () => {
       if (!topic || !subTopic) return null;
 
       return (
-        <div className="animate-fadeIn pb-10 max-w-4xl mx-auto">
+        <div className="animate-fadeIn pb-8 max-w-4xl mx-auto">
           <div className="flex items-center justify-between mb-8">
             <div className="flex items-center gap-4">
               <button onClick={goBackToSubTopics} className="p-2 rounded-xl bg-white border hover:bg-indigo-50 transition-all"><ArrowLeft size={20} /></button>
@@ -298,7 +297,7 @@ const App: React.FC = () => {
       const Icon = iconMap[topic.icon] || BookOpen;
 
       return (
-        <div className="animate-fadeIn pb-10 space-y-6">
+        <div className="animate-fadeIn pb-8 space-y-6">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-4">
               <button onClick={goBackToTopics} className="p-3 rounded-xl bg-white border hover:bg-indigo-50 transition-all"><ArrowLeft size={20} /></button>
