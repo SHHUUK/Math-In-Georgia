@@ -124,21 +124,30 @@ export const analyzeImageWithGemini = async (
           },
           {
             text: `
-              თქვენ ხართ გამოცდილი მათემატიკის მასწავლებელი.
-              გააანალიზეთ ფოტო და აუხსენით ამოცანა.
-
-              **FORMATTING RULES:**
-              - Use **LaTeX** for ALL mathematical expressions ($...$ or $$...$$).
-              - Use **Markdown Headers (###)** for steps.
-              - Use **Bold** for emphasis.
-
-              **სტრუქტურა:**
-                 • **### რა არის სურათზე?** (მოკლე აღწერა)
-                 • **### ფორმულა** (LaTeX notation)
-                 • **### ამოხსნა** (ნაბიჯ-ნაბიჯ)
-                 • **### პასუხი**
+              CRITICAL INSTRUCTION: You are a strict mathematics tutor.
               
-              ენა: ქართული.
+              **STEP 1: TRANSCRIPTION (MANDATORY)**
+              Before solving, you MUST transcribe the exact text, numbers, and formulas visible in the image. 
+              - If the text is Georgian, write it in Georgian.
+              - If English, write in English.
+              - Do not paraphrase yet. Read exactly what is written to ensure you understand the condition.
+
+              **STEP 2: ANALYSIS**
+              - Identify what is asked.
+              - Look for "trick" conditions (e.g., limits, units of measurement, geometry labels).
+
+              **STEP 3: SOLUTION (in Georgian)**
+              - Explain step-by-step.
+              - Use **LaTeX** for all math expressions ($...$).
+              - Use Markdown Headers (###) for structure.
+
+              **STRUCTURE:**
+                 • **### პირობა (Transcription):** (Write exactly what you see in the image here)
+                 • **### რა არის სურათზე?** (Brief description)
+                 • **### ამოხსნა** (Step-by-step logic)
+                 • **### პასუხი** (Final Result)
+              
+              Output Language: Georgian.
             `
           }
         ]
@@ -470,14 +479,19 @@ export const processFunctionStepByStep = async (func: string, val: string): Prom
   if (!ai) return { result: "Error", steps: [] };
 
   try {
+    // UPDATED PROMPT: More explicit about substitution
     const prompt = `
-      Evaluate the function "${func}" for x = ${val}.
+      Goal: Perform algebraic substitution and simplification.
+      
+      1. Function: f(x) = ${func}
+      2. Input: Substitute x = (${val}) into the function.
       
       Provide a step-by-step breakdown.
       Language: Georgian.
       
       **FORMATTING RULES:**
       - Use **LaTeX** for math expressions.
+      - Handle both numeric inputs (e.g. 5) and algebraic inputs (e.g. a+1, y^2).
       
       Output JSON ONLY:
       {
@@ -499,6 +513,43 @@ export const processFunctionStepByStep = async (func: string, val: string): Prom
   } catch (error) {
     console.error("Function Machine Error:", error);
     return { result: "Error", steps: ["ვერ მოხერხდა გამოთვლა."] };
+  }
+};
+
+// New Service: Generate Function Problem
+export const generateFunctionProblem = async (difficulty: 'easy' | 'medium' | 'advanced' | 'expert'): Promise<{func: string, input: string}> => {
+  const ai = getAiClient();
+  if (!ai) return { func: 'x + 1', input: '1' };
+
+  try {
+    const prompt = `
+      Generate a math function problem based on difficulty: "${difficulty}".
+      
+      Rules:
+      - **Easy:** Linear functions (e.g. 2x+3), numeric integer input.
+      - **Medium:** Quadratics, roots, or simple fractions (e.g. x^2 - 4), input can be negative or decimal.
+      - **Advanced:** High-degree polynomials (e.g. x^3), complex rational functions (e.g. 1/(x+1)), or nested roots. Input MUST be algebraic (e.g. 2a+1 or y^2). **STRICTLY NO TRIGONOMETRY (sin, cos, tan).**
+      - **Expert:** Any complex function including Trigonometry, Logarithms, or composite functions.
+      
+      Output JSON ONLY:
+      {
+        "func": "The function string (e.g. 3x - 5)",
+        "input": "The value to substitute (e.g. 4 or y+1)"
+      }
+    `;
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: prompt,
+      config: { responseMimeType: "application/json" }
+    });
+
+    const text = response.text;
+    if (!text) return { func: 'x', input: '0' };
+    return JSON.parse(text.replace(/```json/g, '').replace(/```/g, '').trim());
+  } catch (error) {
+    console.error("Gen Problem Error:", error);
+    return { func: '2x', input: '5' };
   }
 };
 

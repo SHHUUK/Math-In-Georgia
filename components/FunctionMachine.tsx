@@ -1,7 +1,6 @@
-
 import React, { useState } from 'react';
-import { ArrowDown, Settings, Play, RotateCcw, Calculator, HelpCircle, X, Info } from 'lucide-react';
-import { processFunctionStepByStep } from '../services/geminiService';
+import { ArrowDown, Settings, Play, RotateCcw, Calculator, HelpCircle, X, Info, Delete, Wand2, Loader2, Eye } from 'lucide-react';
+import { processFunctionStepByStep, generateFunctionProblem } from '../services/geminiService';
 import { MathRenderer } from './MathRenderer';
 
 interface FunctionMachineProps {
@@ -15,6 +14,13 @@ export const FunctionMachine: React.FC<FunctionMachineProps> = ({ onAddXp }) => 
   const [result, setResult] = useState<string | null>(null);
   const [steps, setSteps] = useState<string[]>([]);
   const [showTutorial, setShowTutorial] = useState(false);
+  
+  // Enhanced Interaction
+  const [activeInput, setActiveInput] = useState<'func' | 'input'>('func');
+  
+  // AI Generator State
+  const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'advanced' | 'expert'>('medium');
+  const [isGenerating, setIsGenerating] = useState(false);
   
   // Animation states
   const [dropBall, setDropBall] = useState(false);
@@ -46,6 +52,44 @@ export const FunctionMachine: React.FC<FunctionMachineProps> = ({ onAddXp }) => 
     }, 2000);
   };
 
+  const handleGenerateProblem = async () => {
+    setIsGenerating(true);
+    // Clear previous results
+    setResult(null);
+    setSteps([]);
+    setShowOutput(false);
+    
+    const problem = await generateFunctionProblem(difficulty);
+    setFunc(problem.func);
+    setInputVal(problem.input);
+    setIsGenerating(false);
+  };
+
+  const insertSymbol = (val: string) => {
+    if (activeInput === 'func') {
+        setFunc(prev => prev + val);
+    } else {
+        setInputVal(prev => prev + val);
+    }
+  };
+
+  const mathSymbols = [
+    { label: 'x', val: 'x' },
+    { label: 'y', val: 'y' },
+    { label: 'a', val: 'a' },
+    { label: '+', val: ' + ' },
+    { label: '-', val: ' - ' },
+    { label: '*', val: '*' },
+    { label: '/', val: '/' },
+    { label: 'x²', val: '^2' },
+    { label: 'x³', val: '^3' },
+    { label: '^', val: '^' },
+    { label: '√', val: 'sqrt(' },
+    { label: '(', val: '(' },
+    { label: ')', val: ')' },
+    { label: 'π', val: 'pi' },
+  ];
+
   return (
     <div className="h-full flex flex-col items-center bg-slate-50 p-6 animate-fadeIn overflow-y-auto relative">
        {/* Tutorial Overlay */}
@@ -74,8 +118,8 @@ export const FunctionMachine: React.FC<FunctionMachineProps> = ({ onAddXp }) => 
               <div className="flex gap-4">
                 <div className="bg-indigo-50 w-8 h-8 rounded-full flex items-center justify-center text-indigo-600 font-bold shrink-0">2</div>
                 <div>
-                  <h3 className="font-bold text-slate-900 mb-1">რატომ არის სასარგებლო?</h3>
-                  <p className="text-sm leading-relaxed">ეხმარება ალგებრული ჩასმის (Substitution) და მოქმედებათა თანმიმდევრობის გააზრებაში. თქვენ ხედავთ "შიგნით" მიმდინარე პროცესს.</p>
+                  <h3 className="font-bold text-slate-900 mb-1">უნივერსალური ჩასმა</h3>
+                  <p className="text-sm leading-relaxed">შეგიძლიათ შეიყვანოთ როგორც რიცხვები (მაგ: 5), ასევე გამოსახულებები (მაგ: a+1). სისტემა ავტომატურად გაამარტივებს.</p>
                 </div>
               </div>
 
@@ -85,8 +129,9 @@ export const FunctionMachine: React.FC<FunctionMachineProps> = ({ onAddXp }) => 
                   <h3 className="font-bold text-slate-900 mb-1">როგორ გამოვიყენო?</h3>
                   <ul className="text-sm space-y-2 list-disc pl-4 mt-1 text-slate-600">
                     <li>ველში <strong>ფუნქცია</strong> ჩაწერეთ ფორმულა (მაგ: <code>3x - 2</code>).</li>
-                    <li>ველში <strong>x</strong> ჩაწერეთ რიცხვი.</li>
-                    <li>დააჭირეთ <strong>გამოთვლას</strong> და უყურეთ ანიმაციას.</li>
+                    <li>ველში <strong>x</strong> ჩაწერეთ მნიშვნელობა.</li>
+                    <li>გამოიყენეთ <strong>მაგალითის მოფიქრება</strong> სავარჯიშოდ.</li>
+                    <li>დააჭირეთ <strong>გამოთვლას</strong>.</li>
                   </ul>
                 </div>
               </div>
@@ -111,8 +156,10 @@ export const FunctionMachine: React.FC<FunctionMachineProps> = ({ onAddXp }) => 
 
              {/* INPUT HOPPER */}
              <div className="relative z-10 mb-4 flex flex-col items-center">
-                <div className="bg-white p-3 rounded-xl shadow-lg mb-2 border-4 border-indigo-500 transform hover:scale-105 transition-transform">
-                   <span className="font-mono font-bold text-xl text-slate-900">x = {inputVal}</span>
+                <div className="bg-white p-3 px-6 rounded-xl shadow-lg mb-2 border-4 border-indigo-500 transform hover:scale-105 transition-transform min-w-[100px] text-center">
+                   <span className="font-mono font-bold text-xl text-slate-900 flex items-center justify-center gap-2">
+                      x = <MathRenderer text={`$${inputVal}$`} inline />
+                   </span>
                 </div>
                 <ArrowDown className={`text-white mb-[-10px] transition-all duration-1000 ${dropBall ? 'translate-y-20 opacity-0' : 'translate-y-0 opacity-100'}`} size={32} />
              </div>
@@ -123,10 +170,12 @@ export const FunctionMachine: React.FC<FunctionMachineProps> = ({ onAddXp }) => 
                 <Settings className={`absolute top-4 right-4 text-indigo-400 w-24 h-24 ${isProcessing ? 'animate-spin' : ''}`} style={{animationDuration: '3s'}} />
                 <Settings className={`absolute bottom-4 left-4 text-indigo-800 w-16 h-16 ${isProcessing ? 'animate-spin' : ''}`} style={{animationDirection: 'reverse', animationDuration: '2s'}} />
                 
-                {/* Function Display */}
-                <div className="bg-slate-900/50 backdrop-blur-md p-4 rounded-xl border border-white/20 text-center relative z-20">
-                   <span className="text-indigo-200 text-xs font-bold uppercase tracking-widest">ფუნქცია</span>
-                   <div className="text-white font-mono text-2xl font-bold mt-1">f(x) = {func}</div>
+                {/* Function Display (Fixed Overflow) */}
+                <div className="bg-slate-900/60 backdrop-blur-md p-2 rounded-xl border border-white/20 text-center relative z-20 w-56 max-w-[95%]">
+                   <span className="text-indigo-200 text-[10px] font-bold uppercase tracking-widest block mb-1">ფუნქცია</span>
+                   <div className="text-white font-mono text-lg font-bold flex justify-center items-center overflow-x-auto no-scrollbar whitespace-nowrap px-2">
+                      <MathRenderer text={`$ f(x) = ${func} $`} inline />
+                   </div>
                 </div>
 
                 {/* Processing Status */}
@@ -142,7 +191,7 @@ export const FunctionMachine: React.FC<FunctionMachineProps> = ({ onAddXp }) => 
                 <div className={`h-8 w-4 bg-indigo-500 mb-2 ${showOutput ? 'h-8' : 'h-0'} transition-all duration-500`}></div>
                 {showOutput && (
                    <div className="bg-green-500 text-white p-4 rounded-2xl shadow-[0_0_30px_rgba(34,197,94,0.6)] border-4 border-green-300 transform animate-in zoom-in slide-in-from-top-4 duration-500">
-                      <span className="font-mono font-bold text-3xl">{result}</span>
+                      <span className="font-mono font-bold text-3xl"><MathRenderer text={result || ''} inline /></span>
                    </div>
                 )}
              </div>
@@ -152,7 +201,7 @@ export const FunctionMachine: React.FC<FunctionMachineProps> = ({ onAddXp }) => 
           {/* RIGHT: Controls & Explanation */}
           <div className="flex-1 p-8 bg-white flex flex-col">
              <div className="mb-8">
-                <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center justify-between mb-4">
                   <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
                      <Calculator className="text-indigo-600"/> ფუნქციის მანქანა
                   </h2>
@@ -160,32 +209,99 @@ export const FunctionMachine: React.FC<FunctionMachineProps> = ({ onAddXp }) => 
                     <HelpCircle size={24} />
                   </button>
                 </div>
+
+                {/* Generator Section */}
+                <div className="bg-indigo-50 p-4 rounded-xl border border-indigo-100 mb-6">
+                   <div className="flex justify-between items-center mb-2">
+                      <span className="text-xs font-bold text-indigo-800 uppercase flex items-center gap-1"><Wand2 size={12}/> მაგალითის გენერატორი</span>
+                   </div>
+                   <div className="grid grid-cols-4 gap-1.5 mb-2">
+                      <button onClick={() => setDifficulty('easy')} className={`py-1 text-[10px] font-bold rounded-lg transition-colors ${difficulty === 'easy' ? 'bg-indigo-600 text-white' : 'bg-white text-slate-500 border border-slate-200'}`}>მარტივი</button>
+                      <button onClick={() => setDifficulty('medium')} className={`py-1 text-[10px] font-bold rounded-lg transition-colors ${difficulty === 'medium' ? 'bg-indigo-600 text-white' : 'bg-white text-slate-500 border border-slate-200'}`}>საშუალო</button>
+                      <button onClick={() => setDifficulty('advanced')} className={`py-1 text-[10px] font-bold rounded-lg transition-colors ${difficulty === 'advanced' ? 'bg-indigo-600 text-white' : 'bg-white text-slate-500 border border-slate-200'}`}>რთული</button>
+                      <button onClick={() => setDifficulty('expert')} className={`py-1 text-[10px] font-bold rounded-lg transition-colors ${difficulty === 'expert' ? 'bg-purple-600 text-white' : 'bg-white text-slate-500 border border-slate-200'}`}>ექსპერტი</button>
+                   </div>
+                   <button 
+                     onClick={handleGenerateProblem} 
+                     disabled={isGenerating}
+                     className="w-full py-2 bg-white hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-lg font-bold text-sm flex items-center justify-center gap-2 transition-all shadow-sm"
+                   >
+                      {isGenerating ? <Loader2 className="animate-spin" size={16}/> : <Wand2 size={16}/>} მაგალითის მოფიქრება
+                   </button>
+                </div>
                 
                 <div className="space-y-4">
                    <div>
-                      <label className="block text-xs font-bold text-slate-400 uppercase mb-1">ფუნქცია f(x)</label>
-                      <input 
-                        type="text" 
-                        value={func} 
-                        onChange={(e) => setFunc(e.target.value)} 
-                        className="w-full p-4 bg-slate-50 border-2 border-slate-200 rounded-xl font-mono text-lg focus:border-indigo-500 focus:bg-white outline-none transition-all text-slate-900"
-                        placeholder="მაგ: x^2 + 5"
-                      />
+                      <div className="flex justify-between items-center mb-1">
+                         <label className="text-xs font-bold text-slate-400 uppercase">ფუნქცია f(x)</label>
+                         {func && (
+                            <div className="text-xs bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded flex items-center gap-1 animate-in fade-in">
+                               <Eye size={10} /> <MathRenderer text={`$${func}$`} inline />
+                            </div>
+                         )}
+                      </div>
+                      <div className="relative">
+                        <input 
+                          type="text" 
+                          value={func} 
+                          onChange={(e) => setFunc(e.target.value)} 
+                          onFocus={() => setActiveInput('func')}
+                          className={`w-full p-4 bg-slate-50 border-2 rounded-xl font-mono text-lg outline-none transition-all text-slate-900 pr-10 ${activeInput === 'func' ? 'border-indigo-500 bg-white ring-2 ring-indigo-100' : 'border-slate-200'}`}
+                          placeholder="მაგ: x^2 + 5"
+                        />
+                        <button 
+                          onClick={() => setFunc('')}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-300 hover:text-red-500 transition-colors"
+                        >
+                          <Delete size={20} />
+                        </button>
+                      </div>
                    </div>
+
                    <div>
-                      <label className="block text-xs font-bold text-slate-400 uppercase mb-1">შეიყვანე x</label>
-                      <input 
-                        type="number" 
-                        value={inputVal} 
-                        onChange={(e) => setInputVal(e.target.value)} 
-                        className="w-full p-4 bg-slate-50 border-2 border-slate-200 rounded-xl font-mono text-lg focus:border-indigo-500 focus:bg-white outline-none transition-all text-slate-900"
-                        placeholder="0"
-                      />
+                      <div className="flex justify-between items-center mb-1">
+                         <label className="text-xs font-bold text-slate-400 uppercase">შეიყვანე x</label>
+                         {inputVal && isNaN(Number(inputVal)) && (
+                            <div className="text-xs bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded flex items-center gap-1 animate-in fade-in">
+                               <Eye size={10} /> <MathRenderer text={`$${inputVal}$`} inline />
+                            </div>
+                         )}
+                      </div>
+                      <div className="relative">
+                        <input 
+                          type="text" 
+                          value={inputVal} 
+                          onChange={(e) => setInputVal(e.target.value)} 
+                          onFocus={() => setActiveInput('input')}
+                          className={`w-full p-4 bg-slate-50 border-2 rounded-xl font-mono text-lg outline-none transition-all text-slate-900 pr-10 ${activeInput === 'input' ? 'border-indigo-500 bg-white ring-2 ring-indigo-100' : 'border-slate-200'}`}
+                          placeholder="მაგ: 5 ან a+1"
+                        />
+                        <button 
+                          onClick={() => setInputVal('')}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-300 hover:text-red-500 transition-colors"
+                        >
+                          <Delete size={20} />
+                        </button>
+                      </div>
                    </div>
+
+                   {/* MATH KEYPAD */}
+                   <div className="grid grid-cols-7 gap-2 mt-2">
+                        {mathSymbols.map((sym) => (
+                          <button
+                            key={sym.label}
+                            onClick={() => insertSymbol(sym.val)}
+                            className="p-2 bg-white border border-slate-200 hover:border-indigo-300 hover:bg-indigo-50 text-slate-700 hover:text-indigo-700 rounded-lg font-bold text-xs transition-all shadow-sm active:scale-95 flex items-center justify-center font-mono"
+                          >
+                            {sym.label}
+                          </button>
+                        ))}
+                   </div>
+
                    <button 
                      onClick={handleCalculate} 
                      disabled={isProcessing}
-                     className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-lg shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2 disabled:bg-slate-300 disabled:cursor-not-allowed"
+                     className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-lg shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2 disabled:bg-slate-300 disabled:cursor-not-allowed mt-2"
                    >
                       {isProcessing ? '...' : <><Play fill="currentColor"/> გამოთვლა</>}
                    </button>

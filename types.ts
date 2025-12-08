@@ -33,6 +33,15 @@ export interface ChatMessage {
   isLoading?: boolean;
 }
 
+// NEW: Chat Session for History
+export interface ChatSession {
+  id: string;
+  title: string;
+  date: string;
+  preview: string;
+  messages: ChatMessage[];
+}
+
 export enum AppView {
   SYNOPSIS = 'synopsis',
   CHAT = 'chat',
