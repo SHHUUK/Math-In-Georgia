@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Bot, User, Loader2, Plus, Image as ImageIcon, X, Mic, Trash2, Download, Copy, Check, MessageSquare, Menu, Clock, Edit3 } from 'lucide-react';
 import { chatWithGemini } from '../services/geminiService';
@@ -22,7 +23,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ onAddXp }) => {
   
   // Voice & Image State
   const [isListening, setIsListening] = useState(false);
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [selectedImages, setSelectedImages] = useState<{data: string, mimeType: string, id: string}[]>([]);
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -37,9 +38,6 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ onAddXp }) => {
       try {
         const parsed = JSON.parse(savedSessions);
         setSessions(parsed);
-        // Load the most recent session or start fresh? 
-        // User requested: "Every open updates OR has a button". 
-        // Let's start fresh by default but keep history accessible.
       } catch (e) {
         console.error("Error parsing chat sessions", e);
       }
@@ -125,26 +123,41 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ onAddXp }) => {
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages, isTyping]);
+  }, [messages, isTyping, selectedImages]);
 
   // Handle Paste
   useEffect(() => {
     const handlePaste = (e: ClipboardEvent) => {
       if (e.clipboardData && e.clipboardData.items) {
         const items = e.clipboardData.items;
+        const promises: Promise<{data: string, mimeType: string, id: string}>[] = [];
+
         for (let i = 0; i < items.length; i++) {
-          if (items[i].type.indexOf('image') !== -1) {
+          const item = items[i] as any; // Fixing TS error: Property 'type' does not exist on type 'unknown'
+          if (item.type.indexOf('image') !== -1) {
             e.preventDefault();
-            const blob = items[i].getAsFile();
+            const blob = item.getAsFile();
             if (blob) {
-              const reader = new FileReader();
-              reader.onloadend = () => {
-                setSelectedImage(reader.result as string);
-              };
-              reader.readAsDataURL(blob);
+              const p = new Promise<{data: string, mimeType: string, id: string}>((resolve) => {
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                  resolve({
+                    data: (reader.result as string).split(',')[1],
+                    mimeType: blob.type,
+                    id: Math.random().toString(36).substr(2, 9)
+                  });
+                };
+                reader.readAsDataURL(blob as Blob); // Fixing TS error: Argument of type 'unknown' is not assignable to parameter of type 'Blob'
+              });
+              promises.push(p);
             }
-            break;
           }
+        }
+        
+        if (promises.length > 0) {
+           Promise.all(promises).then(newImages => {
+              setSelectedImages(prev => [...prev, ...newImages]);
+           });
         }
       }
     };
@@ -153,23 +166,41 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ onAddXp }) => {
   }, []);
 
   const handleImageSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setSelectedImage(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+    const files = event.target.files;
+    if (files) {
+      const promises: Promise<{data: string, mimeType: string, id: string}>[] = [];
+      Array.from(files).forEach(file => {
+         const p = new Promise<{data: string, mimeType: string, id: string}>((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+               resolve({
+                  data: (reader.result as string).split(',')[1],
+                  mimeType: file.type,
+                  id: Math.random().toString(36).substr(2, 9)
+               });
+            };
+            reader.readAsDataURL(file);
+         });
+         promises.push(p);
+      });
+
+      Promise.all(promises).then(newImages => {
+         setSelectedImages(prev => [...prev, ...newImages]);
+      });
     }
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
+  const removeImage = (id: string) => {
+     setSelectedImages(prev => prev.filter(img => img.id !== id));
+  };
+
   const handleSend = async () => {
-    if (!input.trim() && !selectedImage) return;
+    if (!input.trim() && selectedImages.length === 0) return;
 
     const userMsg: ChatMessage = { 
       role: ChatRole.USER, 
-      text: input + (selectedImage ? ' [სურათი თანდართულია]' : '') 
+      text: input + (selectedImages.length > 0 ? ` [${selectedImages.length} სურათი თანდართულია]` : '') 
     };
     
     setMessages(prev => [...prev, userMsg]);
@@ -177,13 +208,14 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ onAddXp }) => {
     
     if (onAddXp) onAddXp(10, 'დასვი კითხვა');
     
-    const imageToSend = selectedImage ? selectedImage.split(',')[1] : undefined;
-    const mimeType = selectedImage ? selectedImage.substring(selectedImage.indexOf(':') + 1, selectedImage.indexOf(';')) : undefined;
-    
-    setSelectedImage(null);
+    const imagesToSend = [...selectedImages]; // Copy current images to send
+    setSelectedImages([]); // Clear preview immediately
     setIsTyping(true);
 
-    const responseText = await chatWithGemini(messages, input, imageToSend, mimeType);
+    // Filter to pass only data and mimeType to service
+    const serviceImages = imagesToSend.map(img => ({ data: img.data, mimeType: img.mimeType }));
+
+    const responseText = await chatWithGemini(messages, input, serviceImages);
     
     const botMsg: ChatMessage = { role: ChatRole.MODEL, text: responseText };
     setMessages(prev => [...prev, botMsg]);
@@ -342,26 +374,32 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ onAddXp }) => {
 
          {/* Input Area */}
          <div className="p-4 bg-white border-t border-slate-200 relative z-10">
-            {selectedImage && (
-               <div className="mb-3 relative inline-block animate-in slide-in-from-bottom-2">
-                  <img 
-                     src={selectedImage} 
-                     alt="Selected" 
-                     className="h-24 w-auto rounded-lg border border-slate-200 shadow-sm"
-                  />
-                  <div className="absolute top-1 right-1 bg-black/60 text-white text-[10px] px-2 py-0.5 rounded backdrop-blur-sm">AI Analysis Ready</div>
-                  <button 
-                     onClick={() => setSelectedImage(null)}
-                     className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 shadow-md transition-colors"
-                  >
-                     <X size={12} />
-                  </button>
+            
+            {/* Horizontal Image Preview Gallery */}
+            {selectedImages.length > 0 && (
+               <div className="flex gap-3 mb-3 overflow-x-auto pb-2 custom-scrollbar animate-in slide-in-from-bottom-2">
+                  {selectedImages.map((img) => (
+                     <div key={img.id} className="relative shrink-0 group">
+                        <img 
+                           src={`data:${img.mimeType};base64,${img.data}`} 
+                           alt="Selected" 
+                           className="h-24 w-auto rounded-lg border border-slate-200 shadow-sm object-cover"
+                        />
+                        <button 
+                           onClick={() => removeImage(img.id)}
+                           className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 shadow-md transition-colors opacity-0 group-hover:opacity-100"
+                        >
+                           <X size={12} />
+                        </button>
+                     </div>
+                  ))}
                </div>
             )}
 
             <div className="flex gap-2 items-end">
                <input
                   type="file"
+                  multiple
                   ref={fileInputRef}
                   onChange={handleImageSelect}
                   accept="image/*"
@@ -373,7 +411,14 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ onAddXp }) => {
                   className="mb-1 p-3 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all"
                   title="სურათის ატვირთვა"
                >
-                  <ImageIcon size={24} />
+                  <div className="relative">
+                     <ImageIcon size={24} />
+                     {selectedImages.length > 0 && (
+                        <span className="absolute -top-2 -right-2 bg-indigo-600 text-white text-[10px] w-4 h-4 flex items-center justify-center rounded-full font-bold">
+                           {selectedImages.length}
+                        </span>
+                     )}
+                  </div>
                </button>
 
                <div className="flex-1 relative">
@@ -386,7 +431,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ onAddXp }) => {
                            handleSend();
                         }
                      }}
-                     placeholder={selectedImage ? "დაამატე კომენტარი სურათზე..." : "დასვი კითხვა... (Ctrl+V სურათისთვის)"}
+                     placeholder={selectedImages.length > 0 ? "დაამატე კომენტარი სურათებზე..." : "დასვი კითხვა... (Ctrl+V სურათისთვის)"}
                      className="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-xl pl-4 pr-12 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all resize-none max-h-32 min-h-[50px] shadow-inner"
                      rows={1}
                      style={{ height: 'auto' }}
@@ -402,7 +447,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ onAddXp }) => {
                
                <button 
                   onClick={handleSend}
-                  disabled={isTyping || (!input.trim() && !selectedImage)}
+                  disabled={isTyping || (!input.trim() && selectedImages.length === 0)}
                   className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white rounded-xl p-3 transition-all shadow-md hover:scale-105 active:scale-95 mb-1"
                >
                   <Send size={20} />

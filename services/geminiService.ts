@@ -14,8 +14,7 @@ const getAiClient = () => {
 export const chatWithGemini = async (
   history: ChatMessage[], 
   newMessage: string,
-  base64Image?: string,
-  mimeType: string = 'image/png'
+  images: { data: string, mimeType: string }[] = []
 ): Promise<string> => {
   const ai = getAiClient();
   if (!ai) return "Error: API Key not configured.";
@@ -76,13 +75,15 @@ export const chatWithGemini = async (
     // Prepare contents array
     const contents = [];
     
-    // If image is provided, add it as the first part
-    if (base64Image) {
-      contents.push({
-        inlineData: {
-          mimeType: mimeType,
-          data: base64Image
-        }
+    // If images are provided, add them first
+    if (images && images.length > 0) {
+      images.forEach(img => {
+        contents.push({
+          inlineData: {
+            mimeType: img.mimeType,
+            data: img.data
+          }
+        });
       });
     }
     
