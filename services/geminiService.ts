@@ -35,13 +35,15 @@ export const chatWithGemini = async (
       
       **TECHNICAL HOW-TO FOR VISUALS:**
       - To generate a visual, output **RAW SVG HTML CODE** directly in your response.
-      - **DO NOT** use markdown code blocks (like \`\`\`xml or \`\`\`svg) for the SVG. Just write the \`<svg>...</svg>\` tag directly in the text.
-      - **Style:** Use a \`viewBox\` (e.g., "0 0 400 300"). Use styling compatible with a light theme (Stroke: #4f46e5 (Indigo), Fill: rgba(79, 70, 229, 0.1), Text: #1e293b (Slate)). 
+      - **PLACEMENT:** Put the SVG code on its own line, separated by blank lines from the text.
+      - **DO NOT** use markdown code blocks (like \`\`\`xml or \`\`\`svg) for the SVG. Just write the \`<svg>...</svg>\` tag directly.
+      - **Style:** Use a \`viewBox\` (e.g., "0 0 400 300") and set \`width="100%"\` and \`height="auto"\` inside the SVG tag to ensure responsiveness.
+      - **Theme:** Use styling compatible with a light theme (Stroke: #4f46e5 (Indigo), Fill: rgba(79, 70, 229, 0.1), Text: #1e293b (Slate)). 
       - Keep diagrams simple, clear, and educational.
 
       **SPECIFIC RULES FOR NUMBER LINES / INTERVALS:**
       When drawing number lines, intervals, or segments, use these strict rules:
-      - **Dimensions:** Width: 300–500 px, Height: 60–90 px.
+      - **Dimensions:** Width: 300–500 px, Height: 80–100 px.
       - **Stroke:** Thickness 2–3 px. Thin baseline (solid black or dark grey).
       - **Labels:** Place numbers above the line, small and centered (font-size 14-16).
       - **Points:** Solid small circles (6–10 px diameter). Consistent color.
@@ -58,7 +60,7 @@ export const chatWithGemini = async (
 
       **RESPONSE STRUCTURE:**
       1. **Greeting/Intro:** Friendly opening with an emoji.
-      2. **### Visual:** (If applicable) The SVG diagram.
+      2. **### Visual:** (If applicable) The SVG diagram on a new line.
       3. **### Step-by-Step Explanation:**
          - Break down the logic.
          - **Analyze:** Explain *why* we do this.
@@ -418,13 +420,13 @@ export const solveGeometryProblem = async (problemText: string, base64Image?: st
     const prompt = `
       You are a Geometry Engine. Convert the user's geometry problem into a structured coordinate system drawing and step-by-step solution.
       
-      Problem: "${problemText}"
-      ${base64Image ? "An image is also provided for context. Analyze it carefully." : ""}
+      ${problemText ? `Problem: "${problemText}"` : `Task: Reconstruct the geometric figure seen in the image EXACTLY.`}
+      ${base64Image ? "An image is provided. Analyze it to extract geometric shapes, labels, and relationships." : ""}
       
       Output JSON ONLY.
       
       **CRITICAL DIAGRAM RULES:**
-      1. **Completeness:** DRAW EVERYTHING described.
+      1. **Completeness:** DRAW EVERYTHING described or seen. If reconstruction, approximate vertices to look like the photo.
       2. **Coordinates:** 800x600 canvas. SAFE ZONE: X[50-750], Y[50-550].
       3. **Labeling:** Label all vertices.
       

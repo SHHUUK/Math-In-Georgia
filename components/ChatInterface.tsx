@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Bot, User, Loader2, Plus, Image as ImageIcon, X, Mic, Trash2, Download, Copy, Check, MessageSquare, Menu, Clock, Edit3 } from 'lucide-react';
 import { chatWithGemini } from '../services/geminiService';
@@ -12,7 +11,6 @@ interface ChatInterfaceProps {
 const DEFAULT_WELCOME_MSG: ChatMessage = { role: ChatRole.MODEL, text: 'გამარჯობა! მე ვარ შენი მათემატიკის დამხმარე. მკითხე ნებისმიერი რამ ფორმულებზე ან ამოცანებზე. ასევე, შეგიძლია ჩააგდო ფოტო და მე მას გავაანალიზებ.' };
 
 export const ChatInterface: React.FC<ChatInterfaceProps> = ({ onAddXp }) => {
-  // State
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([DEFAULT_WELCOME_MSG]);
@@ -133,7 +131,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ onAddXp }) => {
         const promises: Promise<{data: string, mimeType: string, id: string}>[] = [];
 
         for (let i = 0; i < items.length; i++) {
-          const item = items[i] as any; // Fixing TS error: Property 'type' does not exist on type 'unknown'
+          const item = items[i] as any; // Cast to any to avoid TS errors
           if (item.type.indexOf('image') !== -1) {
             e.preventDefault();
             const blob = item.getAsFile();
@@ -147,7 +145,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ onAddXp }) => {
                     id: Math.random().toString(36).substr(2, 9)
                   });
                 };
-                reader.readAsDataURL(blob as Blob); // Fixing TS error: Argument of type 'unknown' is not assignable to parameter of type 'Blob'
+                reader.readAsDataURL(blob);
               });
               promises.push(p);
             }
