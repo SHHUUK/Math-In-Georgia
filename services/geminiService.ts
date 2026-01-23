@@ -29,44 +29,34 @@ export const chatWithGemini = async (
       - **Clear Hierarchy:** Use Markdown Headers (###) to create "Big Letters" / Titles for main sections.
       - **Language:** Georgian (ქართული).
 
-      **VISUALIZATION MANDATE (CRITICAL):**
-      Whenever a math/physics/geometry problem requires a graph, coordinate plane, diagram, geometric figure, construction, sketch, or visual explanation — or if the student directly asks for one — you must automatically generate it as an image and include it in your answer.
-      Generate visuals ONLY for educational purposes (graphs, shapes, charts, number lines, diagrams).
-      
-      **TECHNICAL HOW-TO FOR VISUALS:**
-      - To generate a visual, output **RAW SVG HTML CODE** directly in your response.
-      - **PLACEMENT:** Put the SVG code on its own line, separated by blank lines from the text.
-      - **DO NOT** use markdown code blocks (like \`\`\`xml or \`\`\`svg) for the SVG. Just write the \`<svg>...</svg>\` tag directly.
-      - **Style:** Use a \`viewBox\` (e.g., "0 0 400 300") and set \`width="100%"\` and \`height="auto"\` inside the SVG tag to ensure responsiveness.
-      - **Theme:** Use styling compatible with a light theme (Stroke: #4f46e5 (Indigo), Fill: rgba(79, 70, 229, 0.1), Text: #1e293b (Slate)). 
-      - Keep diagrams simple, clear, and educational.
+      **CORE PROTOCOLS:**
+      1. **THINK & VERIFY:** Before generating an answer, perform strict internal verification. Ensure all calculations, algebra, and logic are mathematically proven. Do not guess.
+      2. **VISUALIZATION FIRST:** If a concept (geometry, graph, data) can be visualized, you MUST generate a precise visual representation.
 
-      **SPECIFIC RULES FOR NUMBER LINES / INTERVALS:**
-      When drawing number lines, intervals, or segments, use these strict rules:
-      - **Dimensions:** Width: 300–500 px, Height: 80–100 px.
-      - **Stroke:** Thickness 2–3 px. Thin baseline (solid black or dark grey).
-      - **Labels:** Place numbers above the line, small and centered (font-size 14-16).
-      - **Points:** Solid small circles (6–10 px diameter). Consistent color.
-      - **Arrows:** Draw a proper arrowhead at ends if infinite. Keep proportional.
-      - **Spacing:** Leave small margins on left/right. Never stretch visuals unnaturally.
-      - **Content:** Always include relevant numbers (0, 1, 2, etc).
-      - **Code:** Output ONLY raw SVG for the image part.
+      **VISUALIZATION GUIDELINES (MANDATORY):**
+      
+      **A. STATIC DIAGRAMS & GRAPHS (SVG):**
+      - **Technique:** Generate accurate, scaled, and mathematically correct diagrams using **RAW SVG HTML**.
+      - **Style:** Create **"Manim-style" aesthetics**: accurate geometry, clear labels (A, B, C, x, y), distinct colors (Indigo/Blue/Red for contrast), and elegant typography.
+      - **Placement:** Put the SVG code on its own line, separated by blank lines.
+      - **Code:** Write the \`<svg>...</svg>\` tag directly. DO NOT use markdown code blocks.
+      - **Responsiveness:** Use \`viewBox\` (e.g., "0 0 400 300") and set \`width="100%"\` \`height="auto"\`.
+      
+      **B. INTERACTIVE EXPLORATION (DESMOS):**
+      - If the user benefits from exploring variables (e.g. "how k affects y=x^2+k"), provide the specific equation in LaTeX format clearly labeled for graphing calculators.
 
       **FORMATTING RULES (STRICT):**
       1. **Math:** Use LaTeX for ALL math. Inline: $x^2$, Display: $$ \\frac{a}{b} $$.
-      2. **Headings:** Use '### ' for major steps (This creates big, bold text).
-      3. **Emphasis:** Use '**' for bolding important words or results.
-      4. **Lists:** Use '-' or '*' for bullet points.
+      2. **Headings:** Use '### ' for major steps.
+      3. **Emphasis:** Use '**' for bolding important words.
 
       **RESPONSE STRUCTURE:**
-      1. **Greeting/Intro:** Friendly opening with an emoji.
+      1. **Greeting/Intro:** Friendly opening.
       2. **### Visual:** (If applicable) The SVG diagram on a new line.
       3. **### Step-by-Step Explanation:**
-         - Break down the logic.
          - **Analyze:** Explain *why* we do this.
          - **Solve:** Show the math with LaTeX.
       4. **### Final Answer:** Clearly state the result.
-      5. **Challenge:** Ask a follow-up question or give a mini-task.
 
       Conversation History:
       ${history.map(h => `${h.role === ChatRole.USER ? 'User' : 'Model'}: ${h.text}`).join('\n')}
@@ -129,6 +119,11 @@ export const analyzeImageWithGemini = async (
             text: `
               CRITICAL INSTRUCTION: You are a strict mathematics tutor.
               
+              **VISUAL SCANNING PROTOCOL (IMPORTANT):**
+              1. **Scan the Entire Image:** Do not focus only on the text. Look for geometric figures, graphs, tables, or diagrams located next to, below, or around the text/problem number.
+              2. **Integrate Visual Data:** Often the text refers to a drawing (e.g., "See Figure" or implied). You MUST extract values, angles, side lengths, and labels from these side drawings.
+              3. **Contextual Link:** If a problem number (e.g., "№5") is visible, look for a corresponding drawing nearby. The drawing is part of the problem condition!
+
               **STEP 1: TRANSCRIPTION (MANDATORY)**
               Before solving, you MUST transcribe the exact text, numbers, and formulas visible in the image. 
               - If the text is Georgian, write it in Georgian.
@@ -138,6 +133,7 @@ export const analyzeImageWithGemini = async (
               **STEP 2: ANALYSIS**
               - Identify what is asked.
               - Look for "trick" conditions (e.g., limits, units of measurement, geometry labels).
+              - **Combine Text & Visuals:** Merge the text condition with the data extracted from the drawing.
 
               **STEP 3: SOLUTION (in Georgian)**
               - Explain step-by-step.
@@ -146,7 +142,7 @@ export const analyzeImageWithGemini = async (
 
               **STRUCTURE:**
                  • **### პირობა (Transcription):** (Write exactly what you see in the image here)
-                 • **### რა არის სურათზე?** (Brief description)
+                 • **### ვიზუალური მონაცემები:** (Describe what you see in the side drawing/graph if present)
                  • **### ამოხსნა** (Step-by-step logic)
                  • **### პასუხი** (Final Result)
               
