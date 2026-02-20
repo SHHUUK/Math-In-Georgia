@@ -403,7 +403,10 @@ export interface GeoShape {
 }
 
 export interface GeoSolution {
+  viewBox?: string;
   shapes: GeoShape[];
+  arcs?: { d: string, color: string }[]; // For angles
+  measurements?: { x: number, y: number, text: string, type: 'side' | 'angle' }[]; // For side/angle labels
   steps: string[];
   explanation: string;
 }
@@ -414,26 +417,39 @@ export const solveGeometryProblem = async (problemText: string, base64Image?: st
 
   try {
     const prompt = `
-      You are a Geometry Engine. Convert the user's geometry problem into a structured coordinate system drawing and step-by-step solution.
+      You are a specialized SVG Geometry Coordinate Generator.
+      Your goal is to generate accurate drawing instructions for a math geometry problem.
       
-      ${problemText ? `Problem: "${problemText}"` : `Task: Reconstruct the geometric figure seen in the image EXACTLY.`}
-      ${base64Image ? "An image is provided. Analyze it to extract geometric shapes, labels, and relationships." : ""}
+      Input:
+      ${problemText ? `Problem Text: "${problemText}"` : `Task: Reconstruct the geometric figure seen in the image EXACTLY.`}
+      ${base64Image ? "An image is provided. Extract ALL geometric shapes, labels, angles, and side lengths shown." : ""}
       
-      Output JSON ONLY.
+      **CRITICAL INSTRUCTIONS:**
+      1. **Calculate Coordinates:** Do not approximate. If AB=5 and BC=5, their pixel distances must be equal. Use standard SVG coordinate system (0,0 is top-left).
+      2. **Draw Everything:** If the problem mentions a triangle ABC with angle B=60°, YOU MUST DRAW Triangle ABC and visual indicator for 60°.
+      3. **Labels:** Every point (A, B, C) must be labeled. Every known side length (e.g., "5cm") must be placed near the midpoint of the line. Every known angle (e.g., "90°") must have a visual arc and text.
+      4. **Canvas:** Assume a 800x600 canvas. Center the figure.
       
-      **CRITICAL DIAGRAM RULES:**
-      1. **Completeness:** DRAW EVERYTHING described or seen. If reconstruction, approximate vertices to look like the photo.
-      2. **Coordinates:** 800x600 canvas. SAFE ZONE: X[50-750], Y[50-550].
-      3. **Labeling:** Label all vertices.
-      
-      **TEXT RULES:**
-      - Use **LaTeX** for math in explanation and steps (e.g. $\\angle ABC = 90^\\circ$).
-      
-      JSON Structure:
+      Output JSON ONLY. Structure:
       {
-        "shapes": [ ... ],
-        "steps": ["Step 1 with $LaTeX$...", "Step 2..."],
-        "explanation": "Brief explanation with $LaTeX$."
+        "viewBox": "0 0 800 600",
+        "shapes": [
+           { 
+             "id": "s1", 
+             "type": "polygon", 
+             "points": [{"x": 100, "y": 200, "label": "A"}, {"x": 300, "y": 200, "label": "B"}, ...],
+             "properties": { "stroke": "blue", "fill": "none" }
+           }
+        ],
+        "arcs": [
+           { "d": "M 120 200 Q 120 180 140 180", "color": "red" } // SVG Path 'd' for angle arcs
+        ],
+        "measurements": [
+           { "x": 200, "y": 220, "text": "10 cm", "type": "side" }, // Side label position
+           { "x": 130, "y": 190, "text": "60°", "type": "angle" } // Angle label position
+        ],
+        "steps": ["Step 1...", "Step 2..."],
+        "explanation": "Brief explanation with LaTeX."
       }
       
       Language: Georgian for text fields.
@@ -464,6 +480,9 @@ export const solveGeometryProblem = async (problemText: string, base64Image?: st
     // Safety check for arrays
     if (!parsed.shapes) parsed.shapes = [];
     if (!parsed.steps) parsed.steps = [];
+    if (!parsed.arcs) parsed.arcs = [];
+    if (!parsed.measurements) parsed.measurements = [];
+    if (!parsed.viewBox) parsed.viewBox = "0 0 800 600";
     
     return parsed;
   } catch (error) {

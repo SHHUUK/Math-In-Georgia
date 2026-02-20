@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { 
   PencilRuler, Download, ZoomIn, ZoomOut, RotateCcw, Play, CheckCircle2,
@@ -19,8 +18,9 @@ export const GeometryVisualizer: React.FC<GeometryVisualizerProps> = ({ onAddXp 
   // Interaction State
   const [viewBox, setViewBox] = useState("0 0 800 600"); // Dynamic ViewBox
   const [selectedPoint, setSelectedPoint] = useState<{shapeId: string, pointIndex: number} | null>(null);
+  const [isPanning, setIsPanning] = useState(false);
+  const [startPan, setStartPan] = useState({ x: 0, y: 0 });
   const [showGrid, setShowGrid] = useState(true);
-  const [measurements, setMeasurements] = useState<string[]>([]);
   
   // Image & View State
   const [userImage, setUserImage] = useState<string | null>(null);
@@ -55,76 +55,14 @@ export const GeometryVisualizer: React.FC<GeometryVisualizerProps> = ({ onAddXp 
     return () => document.removeEventListener('paste', handlePaste);
   }, []);
 
-  // Auto-Fit Logic: When data changes, calculate bounds and center the view
+  // Sync ViewBox from Data or Auto-Fit
   useEffect(() => {
-    if (data && data.shapes && data.shapes.length > 0) {
-      let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-      
-      data.shapes.forEach(shape => {
-        if (shape.points) {
-          shape.points.forEach(p => {
-            if (p.x < minX) minX = p.x;
-            if (p.x > maxX) maxX = p.x;
-            if (p.y < minY) minY = p.y;
-            if (p.y > maxY) maxY = p.y;
-          });
-        }
-      });
-
-      if (minX === Infinity) {
-         // No valid points found
-         setViewBox("0 0 800 600");
-         return;
-      }
-
-      // Add padding
-      const padding = 60;
-      const width = maxX - minX + (padding * 2);
-      const height = maxY - minY + (padding * 2);
-      
-      // Ensure minimum size to prevent extreme zoom on single points
-      const finalWidth = Math.max(width, 400);
-      const finalHeight = Math.max(height, 300);
-      
-      // Center the content
-      const centerX = minX - padding + (width - finalWidth) / 2;
-      const centerY = minY - padding + (height - finalHeight) / 2;
-
-      setViewBox(`${centerX} ${centerY} ${finalWidth} ${finalHeight}`);
+    if (data && data.viewBox) {
+       setViewBox(data.viewBox);
     } else {
-      setViewBox("0 0 800 600");
+       setViewBox("0 0 800 600");
     }
-    
-    updateMeasurements();
   }, [data]);
-
-  // Helper: Distance between two points
-  const dist = (p1: {x:number, y:number}, p2: {x:number, y:number}) => {
-    return Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2));
-  };
-
-  // Helper: Update Measurements based on current shape state
-  const updateMeasurements = () => {
-    if (!data || !data.shapes) return;
-    const notes: string[] = [];
-
-    data.shapes.forEach(shape => {
-      if ((shape.type === 'polygon' || shape.type === 'line') && shape.points) {
-        for (let i = 0; i < shape.points.length; i++) {
-          const p1 = shape.points[i];
-          const p2 = shape.points[(i + 1) % shape.points.length];
-          // Don't close line loop
-          if (shape.type === 'line' && i === shape.points.length - 1) continue;
-          
-          const d = dist(p1, p2);
-          // Scale pixel distance to approximate "units" (e.g., 50px = 1 unit)
-          const units = (d / 50).toFixed(1); 
-          notes.push(`${p1.label.split(' ')[0]}${p2.label.split(' ')[0]} = ${units}`);
-        }
-      }
-    });
-    setMeasurements(notes);
-  };
 
   const handleSolve = async () => {
     if (!input.trim() && !userImage) return;
@@ -153,37 +91,91 @@ export const GeometryVisualizer: React.FC<GeometryVisualizerProps> = ({ onAddXp 
     }
   };
 
-  // Drag Logic
-  const handleMouseDown = (shapeId: string, pointIndex: number) => {
-    setSelectedPoint({ shapeId, pointIndex });
+  // --- INTERACTION LOGIC (PAN, ZOOM, DRAG) ---
+
+  const handleMouseDown = (e: React.MouseEvent, shapeId?: string, pointIndex?: number) => {
+    // Stop propagation if clicking on UI controls
+    if ((e.target as HTMLElement).closest('button')) return;
+
+    if (shapeId !== undefined && pointIndex !== undefined) {
+      // Logic for Dragging a Point
+      e.stopPropagation(); // Don't trigger pan
+      setSelectedPoint({ shapeId, pointIndex });
+    } else {
+      // Logic for Panning the Canvas
+      setIsPanning(true);
+      setStartPan({ x: e.clientX, y: e.clientY });
+    }
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
-    if (!selectedPoint || !data || !svgRef.current) return;
-    
-    // Convert Screen to SVG Coordinates using Matrix
-    const CTM = svgRef.current.getScreenCTM();
-    if (!CTM) return;
-    
-    const mouseX = (e.clientX - CTM.e) / CTM.a;
-    const mouseY = (e.clientY - CTM.f) / CTM.d;
+    if (!svgRef.current) return;
 
-    // Grid Snap (20px)
-    const snap = 20;
-    const x = Math.round(mouseX / snap) * snap;
-    const y = Math.round(mouseY / snap) * snap;
+    // 1. POINT DRAGGING
+    if (selectedPoint && data) {
+      // Convert Screen to SVG Coordinates using Matrix
+      const CTM = svgRef.current.getScreenCTM();
+      if (!CTM) return;
+      
+      const mouseX = (e.clientX - CTM.e) / CTM.a;
+      const mouseY = (e.clientY - CTM.f) / CTM.d;
 
-    const newData = { ...data };
-    const shape = newData.shapes.find(s => s.id === selectedPoint.shapeId);
-    if (shape && shape.points) {
-      shape.points[selectedPoint.pointIndex].x = x;
-      shape.points[selectedPoint.pointIndex].y = y;
-      setData(newData);
+      // Grid Snap (20px)
+      const snap = 10;
+      const x = Math.round(mouseX / snap) * snap;
+      const y = Math.round(mouseY / snap) * snap;
+
+      const newData = { ...data };
+      const shape = newData.shapes.find(s => s.id === selectedPoint.shapeId);
+      if (shape && shape.points) {
+        shape.points[selectedPoint.pointIndex].x = x;
+        shape.points[selectedPoint.pointIndex].y = y;
+        setData(newData);
+      }
+      return;
+    }
+
+    // 2. CANVAS PANNING
+    if (isPanning) {
+      const dx = e.clientX - startPan.x;
+      const dy = e.clientY - startPan.y;
+      
+      const [vx, vy, vw, vh] = viewBox.split(' ').map(Number);
+      const svgRect = svgRef.current.getBoundingClientRect();
+      
+      // Convert pixel delta to viewbox units
+      const scaleX = vw / svgRect.width;
+      const scaleY = vh / svgRect.height;
+      
+      const newX = vx - dx * scaleX;
+      const newY = vy - dy * scaleY;
+      
+      setViewBox(`${newX} ${newY} ${vw} ${vh}`);
+      setStartPan({ x: e.clientX, y: e.clientY });
     }
   };
 
   const handleMouseUp = () => {
     setSelectedPoint(null);
+    setIsPanning(false);
+  };
+
+  const handleWheel = (e: React.WheelEvent) => {
+    if (!svgRef.current) return;
+    e.preventDefault(); // Stop page scroll
+
+    const [vx, vy, vw, vh] = viewBox.split(' ').map(Number);
+    const zoomFactor = e.deltaY > 0 ? 1.1 : 0.9;
+    
+    // Limits
+    const newW = vw * zoomFactor;
+    const newH = vh * zoomFactor;
+    
+    // Zoom towards center
+    const dx = (vw - newW) / 2;
+    const dy = (vh - newH) / 2;
+
+    setViewBox(`${vx + dx} ${vy + dy} ${newW} ${newH}`);
   };
 
   const exportSvg = () => {
@@ -200,8 +192,8 @@ export const GeometryVisualizer: React.FC<GeometryVisualizerProps> = ({ onAddXp 
   // Manual Zoom Controls
   const handleZoomIn = () => {
     const [x, y, w, h] = viewBox.split(' ').map(Number);
-    const newW = w * 0.9;
-    const newH = h * 0.9;
+    const newW = w * 0.8;
+    const newH = h * 0.8;
     const newX = x + (w - newW) / 2;
     const newY = y + (h - newH) / 2;
     setViewBox(`${newX} ${newY} ${newW} ${newH}`);
@@ -209,24 +201,23 @@ export const GeometryVisualizer: React.FC<GeometryVisualizerProps> = ({ onAddXp 
 
   const handleZoomOut = () => {
     const [x, y, w, h] = viewBox.split(' ').map(Number);
-    const newW = w * 1.1;
-    const newH = h * 1.1;
+    const newW = w * 1.2;
+    const newH = h * 1.2;
     const newX = x - (newW - w) / 2;
     const newY = y - (newH - h) / 2;
     setViewBox(`${newX} ${newY} ${newW} ${newH}`);
   };
 
   const handleResetView = () => {
-    // Trigger useEffect logic again by creating a new object ref, or just reset to default if empty
-    if (data) {
-       setData({...data}); // Force re-calc bounds
+    if (data && data.viewBox) {
+       setViewBox(data.viewBox); 
     } else {
        setViewBox("0 0 800 600");
     }
   };
 
   const renderCanvas = (withOverlay: boolean) => (
-    <div className="relative w-full h-full bg-white overflow-hidden flex flex-col rounded-2xl border border-slate-200 shadow-inner">
+    <div className="relative w-full h-full bg-white overflow-hidden flex flex-col rounded-2xl border border-slate-200 shadow-inner group">
        {/* Canvas Controls */}
        <div className="absolute top-4 left-4 z-10 flex flex-col gap-2">
           <button onClick={handleZoomIn} className="p-2 bg-white rounded-lg shadow-sm border hover:bg-slate-50 text-slate-600"><ZoomIn size={20}/></button>
@@ -234,9 +225,16 @@ export const GeometryVisualizer: React.FC<GeometryVisualizerProps> = ({ onAddXp 
           <button onClick={handleResetView} className="p-2 bg-white rounded-lg shadow-sm border hover:bg-slate-50 text-slate-600"><RotateCcw size={20}/></button>
        </div>
 
-       <div className="flex-1 overflow-hidden bg-slate-50/50 flex items-center justify-center cursor-crosshair">
+       <div 
+         className={`flex-1 overflow-hidden bg-slate-50/50 flex items-center justify-center ${isPanning ? 'cursor-grabbing' : 'cursor-grab'}`}
+         onMouseDown={(e) => handleMouseDown(e)}
+         onMouseMove={handleMouseMove}
+         onMouseUp={handleMouseUp}
+         onMouseLeave={handleMouseUp}
+         onWheel={handleWheel}
+       >
           {(!data && !userImage && !withOverlay) ? (
-             <div className="text-center text-slate-400">
+             <div className="text-center text-slate-400 select-none pointer-events-none">
                 <ImageIcon size={48} className="mx-auto mb-4 opacity-20" />
                 <p>ტილო ცარიელია.</p>
              </div>
@@ -247,10 +245,7 @@ export const GeometryVisualizer: React.FC<GeometryVisualizerProps> = ({ onAddXp 
                height="100%" 
                viewBox={viewBox}
                preserveAspectRatio="xMidYMid meet"
-               className="bg-white shadow-sm w-full h-full"
-               onMouseMove={handleMouseMove}
-               onMouseUp={handleMouseUp}
-               onMouseLeave={handleMouseUp}
+               className="bg-white shadow-sm w-full h-full touch-none"
              >
                 <defs>
                   <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
@@ -258,7 +253,7 @@ export const GeometryVisualizer: React.FC<GeometryVisualizerProps> = ({ onAddXp 
                   </pattern>
                 </defs>
                 
-                {showGrid && <rect x={-5000} y={-5000} width="10000" height="10000" fill="url(#grid)" />}
+                {showGrid && <rect x={-5000} y={-5000} width="20000" height="20000" fill="url(#grid)" style={{pointerEvents: 'none'}} />}
 
                 {/* Background User Image Layer (Only in Overlay Mode) */}
                 {withOverlay && userImage && (
@@ -268,19 +263,34 @@ export const GeometryVisualizer: React.FC<GeometryVisualizerProps> = ({ onAddXp 
                     width="800" height="600" 
                     opacity="0.5"
                     preserveAspectRatio="xMidYMid meet"
+                    style={{pointerEvents: 'none'}}
                   />
                 )}
 
-                {/* Geometric Shapes Layer */}
+                {/* 1. Angle Arcs */}
+                {data?.arcs?.map((arc, i) => (
+                   <path 
+                     key={`arc-${i}`}
+                     d={arc.d} 
+                     stroke={arc.color || "red"} 
+                     strokeWidth="2" 
+                     fill="none" 
+                     opacity="0.8"
+                     style={{pointerEvents: 'none'}}
+                   />
+                ))}
+
+                {/* 2. Geometric Shapes */}
                 {data?.shapes?.map(shape => (
                   <g key={shape.id}>
                       {/* Render Shape */}
                       {shape.type === 'polygon' && shape.points && (
                         <polygon 
                           points={shape.points.map(p => `${p.x},${p.y}`).join(' ')}
-                          fill="rgba(79, 70, 229, 0.1)"
+                          fill="rgba(79, 70, 229, 0.05)"
                           stroke="#4f46e5"
-                          strokeWidth="2"
+                          strokeWidth="2.5"
+                          style={{pointerEvents: 'none'}}
                         />
                       )}
                       {shape.type === 'line' && shape.points && (
@@ -288,27 +298,63 @@ export const GeometryVisualizer: React.FC<GeometryVisualizerProps> = ({ onAddXp 
                             points={shape.points.map(p => `${p.x},${p.y}`).join(' ')}
                             fill="none"
                             stroke="#4f46e5"
-                            strokeWidth="2"
+                            strokeWidth="2.5"
+                            style={{pointerEvents: 'none'}}
                         />
                       )}
+                      {shape.type === 'circle' && shape.points && (
+                         // Simple circle: First point center, radius derived from second point or prop
+                         <circle 
+                            cx={shape.points[0].x} 
+                            cy={shape.points[0].y}
+                            r={shape.points[1] ? Math.hypot(shape.points[1].x - shape.points[0].x, shape.points[1].y - shape.points[0].y) : 50}
+                            fill="none"
+                            stroke="#4f46e5"
+                            strokeWidth="2.5"
+                            style={{pointerEvents: 'none'}}
+                         />
+                      )}
 
-                      {/* Render Points & Labels */}
+                      {/* Render Vertices & Labels */}
                       {shape.points?.map((p, idx) => (
-                        <g key={idx} onMouseDown={() => handleMouseDown(shape.id, idx)} style={{cursor: 'grab'}}>
+                        <g 
+                          key={idx} 
+                          onMouseDown={(e) => handleMouseDown(e, shape.id, idx)} 
+                          style={{cursor: 'pointer'}}
+                          className="hover:opacity-80"
+                        >
                             <circle cx={p.x} cy={p.y} r="6" fill="white" stroke="#4f46e5" strokeWidth="2" />
-                            <text 
-                              x={p.x + 12} 
-                              y={p.y - 12} 
-                              fontSize="16" 
-                              fontWeight="bold" 
-                              fill="#1e293b"
-                              style={{ textShadow: "0px 0px 3px white" }}
-                            >
-                              {p.label}
-                            </text>
+                            {p.label && (
+                              <text 
+                                x={p.x + 10} 
+                                y={p.y - 10} 
+                                fontSize="18" 
+                                fontWeight="bold" 
+                                fill="#1e293b"
+                                style={{ textShadow: "0px 0px 4px white", pointerEvents: 'none' }}
+                              >
+                                {p.label}
+                              </text>
+                            )}
                         </g>
                       ))}
                   </g>
+                ))}
+
+                {/* 3. Measurements (Sides & Angles Text) */}
+                {data?.measurements?.map((m, i) => (
+                   <text 
+                     key={`meas-${i}`}
+                     x={m.x} 
+                     y={m.y} 
+                     textAnchor="middle" 
+                     fontSize={m.type === 'angle' ? '14' : '16'}
+                     fill={m.type === 'angle' ? '#dc2626' : '#0f172a'}
+                     fontWeight="bold"
+                     style={{ textShadow: "0px 0px 4px white", pointerEvents: 'none' }}
+                   >
+                      {m.text}
+                   </text>
                 ))}
              </svg>
           )}
@@ -323,7 +369,7 @@ export const GeometryVisualizer: React.FC<GeometryVisualizerProps> = ({ onAddXp 
        <div className="bg-white p-4 md:p-6 rounded-3xl shadow-sm border border-slate-200 mb-6 flex flex-col md:flex-row justify-between items-center gap-4">
           <div>
             <h1 className="text-2xl font-bold flex items-center gap-2 text-indigo-900">
-               <PencilRuler className="text-indigo-600" /> გეომეტრია
+               <PencilRuler className="text-indigo-600" /> გეომეტრიის არქიტექტორი
             </h1>
           </div>
           
@@ -365,7 +411,7 @@ export const GeometryVisualizer: React.FC<GeometryVisualizerProps> = ({ onAddXp 
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   className="w-full h-24 p-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 resize-none focus:ring-2 focus:ring-indigo-500 outline-none transition-all mb-4 text-sm"
-                  placeholder="მაგ: დახაზე სამკუთხედი..."
+                  placeholder="მაგ: დახაზე სამკუთხედი ABC, სადაც AB=10, კუთხე B=60..."
                 />
                 
                 {/* Image Upload Control */}
@@ -415,17 +461,6 @@ export const GeometryVisualizer: React.FC<GeometryVisualizerProps> = ({ onAddXp 
                            <p className="text-slate-700 text-xs pt-1"><MathRenderer text={step} inline /></p>
                         </div>
                      ))}
-                  </div>
-
-                  <div className="mt-6 pt-6 border-t border-slate-100">
-                     <h3 className="font-bold text-xs text-slate-400 uppercase tracking-wider mb-3">გაზომვები</h3>
-                     <div className="grid grid-cols-2 gap-2">
-                        {measurements.map((m, i) => (
-                           <div key={i} className="bg-slate-50 px-3 py-2 rounded-lg text-xs font-mono text-indigo-600 font-bold border border-slate-100 text-center">
-                              {m}
-                           </div>
-                        ))}
-                     </div>
                   </div>
                </div>
              )}

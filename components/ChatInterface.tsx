@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Bot, User, Loader2, Plus, Image as ImageIcon, X, Mic, Trash2, Download, Copy, Check, MessageSquare, Menu, Clock, Edit3 } from 'lucide-react';
 import { chatWithGemini } from '../services/geminiService';
@@ -131,7 +132,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ onAddXp }) => {
         const promises: Promise<{data: string, mimeType: string, id: string}>[] = [];
 
         for (let i = 0; i < items.length; i++) {
-          const item = items[i] as DataTransferItem;
+          const item = items[i];
           if (item.type.indexOf('image') !== -1) {
             e.preventDefault();
             const blob = item.getAsFile();
@@ -139,15 +140,13 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ onAddXp }) => {
               const p = new Promise<{data: string, mimeType: string, id: string}>((resolve) => {
                 const reader = new FileReader();
                 reader.onloadend = () => {
-                  // Explicitly cast blob to File to avoid 'unknown' type errors
-                  const file = blob as File;
                   resolve({
                     data: (reader.result as string).split(',')[1],
-                    mimeType: file.type,
+                    mimeType: blob.type,
                     id: Math.random().toString(36).substr(2, 9)
                   });
                 };
-                reader.readAsDataURL(blob as Blob);
+                reader.readAsDataURL(blob);
               });
               promises.push(p);
             }
