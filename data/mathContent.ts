@@ -25,7 +25,7 @@ export const mathTopics: MathTopic[] = [
             'შეკრება: 2 + 30 = 32'
           ]
         },
-        imageUrl: 'https://images.unsplash.com/photo-1509228468518-180dd4864904?auto=format&fit=crop&w=800&q=80'
+        imageUrl: 'https://images.unsplash.com/photo-1635070041078-e363dbe005cb?auto=format&fit=crop&w=800&q=80'
       },
       {
         id: 'fractions',
@@ -44,7 +44,7 @@ export const mathTopics: MathTopic[] = [
             'შევკვეცოთ: 3/6 = 1/2.'
           ]
         },
-        imageUrl: 'https://images.unsplash.com/photo-1560159752-d6d36d579703?auto=format&fit=crop&w=800&q=80'
+        imageUrl: 'https://images.unsplash.com/photo-1513151233558-d860c5398176?auto=format&fit=crop&w=800&q=80'
       },
       {
         id: 'gcd_lcm',
@@ -63,7 +63,7 @@ export const mathTopics: MathTopic[] = [
             'უსჯ = 2² · 3² = 4 · 9 = 36'
           ]
         },
-        imageUrl: 'https://images.unsplash.com/photo-1587654780291-39c9404d746b?auto=format&fit=crop&w=800&q=80'
+        imageUrl: 'https://images.unsplash.com/photo-1611974765270-ca1258634369?auto=format&fit=crop&w=800&q=80'
       }
     ]
   },
@@ -88,7 +88,7 @@ export const mathTopics: MathTopic[] = [
             'გავყოთ 3-ზე: x = 5'
           ]
         },
-        imageUrl: 'https://images.unsplash.com/photo-1543286386-713bdd548da4?auto=format&fit=crop&w=800&q=80'
+        imageUrl: 'https://images.unsplash.com/photo-1635070041078-e363dbe005cb?auto=format&fit=crop&w=800&q=80'
       },
       {
         id: 'quadratic_eq',
@@ -106,7 +106,7 @@ export const mathTopics: MathTopic[] = [
             'x₁ = 3, x₂ = 2'
           ]
         },
-        imageUrl: 'https://images.unsplash.com/photo-1516934024742-b461fba47600?auto=format&fit=crop&w=800&q=80'
+        imageUrl: 'https://images.unsplash.com/photo-1596495578065-6e0763fa1178?auto=format&fit=crop&w=800&q=80'
       },
       {
         id: 'systems',
@@ -125,7 +125,7 @@ export const mathTopics: MathTopic[] = [
             'y = 2(4) = 8'
           ]
         },
-        imageUrl: 'https://images.unsplash.com/photo-1577083552431-6e5fd01aa342?auto=format&fit=crop&w=800&q=80'
+        imageUrl: 'https://images.unsplash.com/photo-1461749280684-dccba630e2f6?auto=format&fit=crop&w=800&q=80'
       },
       {
         id: 'inequalities',
@@ -144,7 +144,7 @@ export const mathTopics: MathTopic[] = [
             'x > -4'
           ]
         },
-        imageUrl: 'https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?auto=format&fit=crop&w=800&q=80'
+        imageUrl: 'https://images.unsplash.com/photo-1509228468518-180dd4864904?auto=format&fit=crop&w=800&q=80'
       },
       {
         id: 'logarithms',
@@ -162,7 +162,7 @@ export const mathTopics: MathTopic[] = [
             'პასუხია 5.'
           ]
         },
-        imageUrl: 'https://images.unsplash.com/photo-1550684848-fac1c5b4e853?auto=format&fit=crop&w=800&q=80'
+        imageUrl: 'https://images.unsplash.com/photo-1614726365498-50f0717762e3?auto=format&fit=crop&w=800&q=80'
       }
     ]
   },
@@ -284,7 +284,7 @@ export const mathTopics: MathTopic[] = [
           solution: '6',
           steps: ['3! = 3 · 2 · 1 = 6']
         },
-        imageUrl: 'https://images.unsplash.com/photo-1633265486064-086b219458ec?auto=format&fit=crop&w=800&q=80'
+        imageUrl: 'https://images.unsplash.com/photo-1610832958506-aa56368176cf?auto=format&fit=crop&w=800&q=80'
       },
       {
         id: 'combination',
@@ -301,7 +301,7 @@ export const mathTopics: MathTopic[] = [
             '(5·4) / (2·1) = 20 / 2 = 10'
           ]
         },
-        imageUrl: 'https://images.unsplash.com/photo-1610832958506-aa56368176cf?auto=format&fit=crop&w=800&q=80'
+        imageUrl: 'https://images.unsplash.com/photo-1516962215378-7fa2e137ae93?auto=format&fit=crop&w=800&q=80'
       }
     ]
   },
@@ -657,7 +657,7 @@ export const mathTopics: MathTopic[] = [
             'შუა რიცხვია 3.'
           ]
         },
-        imageUrl: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=800&q=80'
+        imageUrl: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=800&q=80'
       },
       {
         id: 'variance_std',
@@ -756,7 +756,7 @@ export const mathTopics: MathTopic[] = [
           solution: '3 + 2i',
           steps: ['2+1 = 3', '3i - i = 2i']
         },
-        imageUrl: 'https://images.unsplash.com/photo-1635070041078-e363dbe005cb?auto=format&fit=crop&w=800&q=80'
+        imageUrl: 'https://images.unsplash.com/photo-1614728263952-84ea256f9679?auto=format&fit=crop&w=800&q=80'
       },
       {
         id: 'eulers_formula',
@@ -775,7 +775,7 @@ export const mathTopics: MathTopic[] = [
             '-1 + 0 = -1'
           ]
         },
-        imageUrl: 'https://images.unsplash.com/photo-1614726365498-50f0717762e3?auto=format&fit=crop&w=800&q=80'
+        imageUrl: 'https://images.unsplash.com/photo-1635070041078-e363dbe005cb?auto=format&fit=crop&w=800&q=80'
       }
     ]
   },
@@ -819,7 +819,7 @@ export const mathTopics: MathTopic[] = [
             'ნაშთი არის 14 - 12 = 2.'
           ]
         },
-        imageUrl: 'https://images.unsplash.com/photo-1509228468518-180dd4864904?auto=format&fit=crop&w=800&q=80'
+        imageUrl: 'https://images.unsplash.com/photo-1518133910546-b6c2fb7d79e3?auto=format&fit=crop&w=800&q=80'
       }
     ]
   }

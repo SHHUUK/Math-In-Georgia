@@ -1,4 +1,7 @@
 
+export type Language = 'ka' | 'en';
+export type Theme = 'light' | 'dark';
+
 export interface MathSubTopic {
   id: string; // Unique ID for navigation
   title: string;

@@ -40,15 +40,15 @@ export const MathRenderer: React.FC<MathRendererProps> = ({ text, className = ''
     // 3. Process Markdown-like formatting on the remaining text
     
     // Headers (### -> h3)
-    html = html.replace(/^### (.*$)/gm, '<h3 class="text-lg font-bold text-slate-800 mt-5 mb-2 border-b border-slate-200 pb-1 w-full">$1</h3>');
-    html = html.replace(/^## (.*$)/gm, '<h2 class="text-xl font-bold text-indigo-700 mt-6 mb-3 w-full">$1</h2>');
+    html = html.replace(/^### (.*$)/gm, '<h3 class="text-lg font-bold text-slate-800 dark:text-slate-200 mt-5 mb-2 border-b border-slate-200 dark:border-slate-700 pb-1 w-full">$1</h3>');
+    html = html.replace(/^## (.*$)/gm, '<h2 class="text-xl font-bold text-indigo-700 dark:text-indigo-300 mt-6 mb-3 w-full">$1</h2>');
     
     // Bold (**text**)
-    html = html.replace(/\*\*(.*?)\*\*/g, '<strong class="font-bold text-indigo-900">$1</strong>');
+    html = html.replace(/\*\*(.*?)\*\*/g, '<strong class="font-bold text-indigo-900 dark:text-indigo-200">$1</strong>');
     
     // Bullet Points (* text or - text)
     // Using flex container to align bullet properly
-    html = html.replace(/^\s*[\-\*] (.*$)/gm, '<div class="flex items-start gap-2 ml-1 mb-1 w-full"><span class="text-indigo-500 mt-1.5 text-xs">●</span><span class="flex-1">$1</span></div>');
+    html = html.replace(/^\s*[\-\*] (.*$)/gm, '<div class="flex items-start gap-2 ml-1 mb-1 w-full"><span class="text-indigo-500 dark:text-indigo-400 mt-1.5 text-xs">●</span><span class="flex-1">$1</span></div>');
 
     // Convert newlines to breaks, but handle multiple newlines as paragraph spacing
     html = html.replace(/\n\n/g, '<div class="h-2"></div>'); // Spacer for double newline
@@ -59,8 +59,8 @@ export const MathRenderer: React.FC<MathRendererProps> = ({ text, className = ''
         const content = mathBlocks[parseInt(idx)];
         // Container keeps it separate from text, centered, and scrollable if too wide
         return `
-          <div class="my-4 w-full overflow-x-auto overflow-y-hidden p-2 bg-slate-50/50 rounded-xl border border-slate-100 flex justify-center items-center custom-scrollbar">
-            <span class="math-display text-lg text-slate-800">$$ ${content} $$</span>
+          <div class="my-4 w-full overflow-x-auto overflow-y-hidden p-2 bg-slate-50/50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-700 flex justify-center items-center custom-scrollbar">
+            <span class="math-display text-lg text-slate-800 dark:text-slate-200">$$ ${content} $$</span>
           </div>
         `;
     });
@@ -71,15 +71,15 @@ export const MathRenderer: React.FC<MathRendererProps> = ({ text, className = ''
         // Add specific class 'math-visual-wrapper' for event delegation
         return `
           <div class="my-6 w-full flex flex-col items-center justify-center">
-            <div class="math-visual-wrapper bg-white p-2 md:p-4 rounded-2xl border border-slate-200 shadow-sm overflow-hidden max-w-full hover:shadow-md transition-all duration-300 cursor-zoom-in relative group">
+            <div class="math-visual-wrapper bg-white dark:bg-slate-800 p-2 md:p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden max-w-full hover:shadow-md transition-all duration-300 cursor-zoom-in relative group">
               ${svgContent}
-              <div class="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors flex items-center justify-center pointer-events-none">
-                 <div class="opacity-0 group-hover:opacity-100 bg-white/90 p-2 rounded-full shadow-sm text-indigo-600 transform scale-75 group-hover:scale-100 transition-all">
+              <div class="absolute inset-0 bg-black/0 group-hover:bg-black/5 dark:group-hover:bg-white/5 transition-colors flex items-center justify-center pointer-events-none">
+                 <div class="opacity-0 group-hover:opacity-100 bg-white/90 dark:bg-slate-700/90 p-2 rounded-full shadow-sm text-indigo-600 dark:text-indigo-400 transform scale-75 group-hover:scale-100 transition-all">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21 21-6-6"/><circle cx="10" cy="10" r="8"/><path d="m10 7v6"/><path d="m7 10h6"/></svg>
                  </div>
               </div>
             </div>
-            <div class="text-[10px] text-slate-400 mt-1 font-medium text-center">დააჭირეთ გასადიდებლად</div>
+            <div class="text-[10px] text-slate-400 dark:text-slate-500 mt-1 font-medium text-center">დააჭირეთ გასადიდებლად</div>
           </div>
         `;
     });

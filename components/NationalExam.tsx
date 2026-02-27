@@ -170,7 +170,14 @@ export const NationalExam: React.FC<NationalExamProps> = ({ onAddXp }) => {
           <div className="text-slate-700 text-lg space-y-4 mb-8 text-left bg-slate-50 p-6 rounded-2xl border border-slate-100">
              <p>🎓 <strong>ფორმატი:</strong> NAEC-ის სტილის მათემატიკის გამოცდა.</p>
              <p>⏱️ <strong>დრო:</strong> 3 საათი (180 წუთი).</p>
-             <p>📝 <strong>სტრუქტურა:</strong> <ul className="list-disc pl-5 mt-1 space-y-1"><li>35 ტესტური დავალება (1 ქულა).</li><li>5 ღია დავალება (3-4 ქულა).</li><li>სულ 40 საკითხი.</li></ul></p>
+             <div className="mb-4">
+               <div>📝 <strong>სტრუქტურა:</strong></div>
+               <ul className="list-disc pl-5 mt-1 space-y-1">
+                 <li>35 ტესტური დავალება (1 ქულა).</li>
+                 <li>5 ღია დავალება (3-4 ქულა).</li>
+                 <li>სულ 40 საკითხი.</li>
+               </ul>
+             </div>
              <p className="font-bold text-indigo-600 pt-2">გამსვლელი ბარიერი: 11 ქულა</p>
              <p className="text-sm text-slate-500 mt-4 italic border-t border-slate-200 pt-3">* სისტემა ავტომატურად აგენერებს ვარიანტს AI-ს დახმარებით.</p>
           </div>
@@ -256,7 +263,7 @@ export const NationalExam: React.FC<NationalExamProps> = ({ onAddXp }) => {
                        <span className="font-bold text-slate-500 flex items-center gap-2"><span className="bg-slate-100 px-2.5 py-1 rounded-lg text-slate-900 text-sm">#{idx + 1}</span><span className="text-xs uppercase tracking-wide">({q.points} ქულა)</span></span>
                        <span className={`font-bold flex items-center gap-2 px-3 py-1 rounded-lg text-sm ${isFullScore ? 'bg-green-50 text-green-700' : isZero ? 'bg-red-50 text-red-700' : 'bg-yellow-50 text-yellow-700'}`}>{isFullScore ? <CheckCircle2 size={16}/> : <XCircle size={16}/>} მიღებული: {det.score} ქულა</span>
                     </div>
-                    <p className="text-slate-900 font-medium mb-6 text-lg leading-relaxed"><MathRenderer text={q.text} /></p>
+                    <div className="text-slate-900 font-medium mb-6 text-lg leading-relaxed"><MathRenderer text={q.text} /></div>
                     <div className="bg-slate-50 p-5 rounded-xl text-sm border border-slate-100">
                        <div className="mb-4">
                           <strong className="text-slate-500 uppercase text-xs tracking-wider block mb-2">თქვენი პასუხი:</strong>

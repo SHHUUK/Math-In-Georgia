@@ -168,7 +168,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ onAddXp }) => {
     const files = event.target.files;
     if (files) {
       const promises: Promise<{data: string, mimeType: string, id: string}>[] = [];
-      Array.from(files).forEach(file => {
+      Array.from(files).forEach((file: File) => {
          const p = new Promise<{data: string, mimeType: string, id: string}>((resolve) => {
             const reader = new FileReader();
             reader.onloadend = () => {
