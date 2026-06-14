@@ -82,9 +82,9 @@ export const chatWithGemini = async (
     // Add text prompt
     contents.push({ text: promptText });
 
-    // Using gemini-2.5-flash for faster response time while maintaining high quality for tutoring
+    // Using gemini-3.5-flash for faster response time while maintaining high quality for tutoring
     const response: GenerateContentResponse = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3.5-flash',
       contents: { parts: contents },
     });
 
@@ -104,9 +104,9 @@ export const analyzeImageWithGemini = async (
   if (!ai) return "Error: API Key not configured.";
 
   try {
-    // Using gemini-2.5-flash for faster visual analysis
+    // Using gemini-3.5-flash for faster visual analysis
     const response: GenerateContentResponse = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3.5-flash',
       contents: {
         parts: [
           {
@@ -183,7 +183,7 @@ export const generateSimilarProblem = async (
     `;
 
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3.5-flash',
       contents: prompt,
     });
 
@@ -258,9 +258,9 @@ export const generateQuiz = async (topic: string): Promise<QuizQuestion[]> => {
       ]
     `;
 
-    // Using gemini-2.5-flash for rapid quiz generation
+    // Using gemini-3.5-flash for rapid quiz generation
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3.5-flash',
       contents: prompt,
       config: {
         responseMimeType: "application/json"
@@ -321,9 +321,9 @@ export const generateMockExam = async (): Promise<ExamQuestion[]> => {
       ]
     `;
 
-    // Keep gemini-3-pro-preview for Exams to ensure complexity and quality
+    // Keep gemini-3.1-pro-preview for Exams to ensure complexity and quality
     const response = await ai.models.generateContent({
-      model: 'gemini-3-pro-preview',
+      model: 'gemini-3.1-pro-preview',
       contents: prompt,
       config: {
         responseMimeType: "application/json"
@@ -371,9 +371,9 @@ export const gradeOpenEndedQuestion = async (
       }
     `;
 
-    // Keep gemini-3-pro-preview for Grading to ensure fairness and reasoning depth
+    // Keep gemini-3.1-pro-preview for Grading to ensure fairness and reasoning depth
     const response = await ai.models.generateContent({
-      model: 'gemini-3-pro-preview',
+      model: 'gemini-3.1-pro-preview',
       contents: prompt,
       config: {
         responseMimeType: "application/json"
@@ -466,9 +466,9 @@ export const solveGeometryProblem = async (problemText: string, base64Image?: st
       });
     }
 
-    // Using gemini-2.5-flash for faster geometry solving
+    // Using gemini-3.5-flash for faster geometry solving
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3.5-flash',
       contents: { parts: contents },
       config: { responseMimeType: "application/json" }
     });
@@ -518,9 +518,9 @@ export const processFunctionStepByStep = async (func: string, val: string): Prom
       }
     `;
 
-    // Using gemini-2.5-flash for immediate step-by-step output
+    // Using gemini-3.5-flash for immediate step-by-step output
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3.5-flash',
       contents: prompt,
       config: { responseMimeType: "application/json" }
     });
@@ -557,7 +557,7 @@ export const generateFunctionProblem = async (difficulty: 'easy' | 'medium' | 'a
     `;
 
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3.5-flash',
       contents: prompt,
       config: { responseMimeType: "application/json" }
     });
@@ -625,14 +625,14 @@ export const generatePodcastAudio = async (topic: string, content: string): Prom
     `;
     
     const scriptResponse = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3.5-flash',
       contents: scriptPrompt
     });
     const scriptText = scriptResponse.text || "Script generation failed.";
 
     // 2. Generate Audio from Script
     const audioResponse = await ai.models.generateContent({
-      model: "gemini-2.5-flash-preview-tts",
+      model: "gemini-3.1-flash-tts-preview",
       contents: [{ parts: [{ text: scriptText }] }],
       config: {
         responseModalities: [Modality.AUDIO],
@@ -688,7 +688,7 @@ export const generateEducationalVideo = async (topic: string): Promise<string | 
     `;
 
     let operation = await ai.models.generateVideos({
-      model: 'veo-3.1-fast-generate-preview',
+      model: 'veo-3.1-lite-generate-preview',
       prompt: prompt,
       config: {
         numberOfVideos: 1,

@@ -64,7 +64,10 @@ export enum AppView {
   PROBABILITY_MACHINE = 'probability_machine',
   MATRIX_MACHINE = 'matrix_machine',
   QUOTES_GALLERY = 'quotes_gallery',
-  AI_DISCUSSION = 'ai_discussion'
+  AI_DISCUSSION = 'ai_discussion',
+  CIRCLE_CHAPTER = 'circle_chapter',
+  TRIGONOMETRY_EXPLORER = 'trigonometry_explorer',
+  SHORT_MULTIPLICATION = 'short_multiplication'
 }
 
 export interface QuizQuestion {

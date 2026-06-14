@@ -7,7 +7,7 @@ import {
   Divide, ClipboardList, Presentation, Smartphone, FileText, Sparkles, Rocket,
   PencilRuler, Award, Crown, Flame, Bell, Cog, BoxSelect, Circle, Triangle as TriangleIcon,
   Hash, Quote, Dices, Target, Calendar, Clock, Library, Mic, PlayCircle, FileDown,
-  Sun, Moon, Languages
+  Sun, Moon, Languages, Sigma
 } from 'lucide-react';
 import { AppView, MathSubTopic, UserProfile, Achievement, Language, Theme } from './types';
 import { mathTopics } from './data/mathContent';
@@ -31,6 +31,9 @@ import { ProbabilityMachine } from './components/ProbabilityMachine';
 import { MatrixMachine } from './components/MatrixMachine';
 import { QuotesGallery } from './components/QuotesGallery';
 import { AIDiscussionPlayer } from './components/AIDiscussionPlayer';
+import { CircleChapter } from './components/CircleChapter';
+import { TrigonometryExplorer } from './components/TrigonometryExplorer';
+import { ShortMultiplicationMachine } from './components/ShortMultiplicationMachine';
 
 const iconMap: Record<string, React.ElementType> = {
   Calculator: CalculatorIcon, Layers, Triangle, Grid, Activity,
@@ -71,6 +74,8 @@ const translations = {
     pythagoras: 'პითაგორას მანქანა',
     unitCircle: 'ტრიგონომეტრიის წრე',
     triangleMaster: 'სამკუთხედის ოსტატი',
+    circleChapter: 'წრეწირი და წრე',
+    trigExplorer: 'ტრიგონომეტრია (ცნობარი)',
     mobileConnect: 'Mobile Connect',
     testing: 'ტესტირება',
     nationalExam: 'ეროვნული გამოცდა',
@@ -136,6 +141,8 @@ const translations = {
     pythagoras: 'Pythagoras Machine',
     unitCircle: 'Unit Circle',
     triangleMaster: 'Triangle Master',
+    circleChapter: 'Circle Chapter',
+    trigExplorer: 'Trigonometry Ref',
     mobileConnect: 'Mobile Connect',
     testing: 'Testing',
     nationalExam: 'National Exam',
@@ -805,6 +812,9 @@ const App: React.FC = () => {
             <NavItem view={AppView.PYTHAGORAS_MACHINE} icon={BoxSelect} label={t.pythagoras} />
             <NavItem view={AppView.UNIT_CIRCLE_MACHINE} icon={Circle} label={t.unitCircle} />
             <NavItem view={AppView.TRIANGLE_MACHINE} icon={TriangleIcon} label={t.triangleMaster} />
+            <NavItem view={AppView.CIRCLE_CHAPTER} icon={Circle} label={t.circleChapter} />
+            <NavItem view={AppView.TRIGONOMETRY_EXPLORER} icon={Sigma} label={t.trigExplorer} />
+            <NavItem view={AppView.SHORT_MULTIPLICATION} icon={CalculatorIcon} label={language === 'ka' ? 'შემოკ. გამრავლება' : 'Short Mult.'} />
             <NavItem view={AppView.MOBILE_CONNECT} icon={Smartphone} label={t.mobileConnect} />
             
             <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 px-4 mt-6">{t.assessment}</div>
@@ -854,6 +864,9 @@ const App: React.FC = () => {
             <div className={currentView === AppView.PYTHAGORAS_MACHINE ? 'block h-full' : 'hidden'}><PythagorasMachine onAddXp={addXp} /></div>
             <div className={currentView === AppView.UNIT_CIRCLE_MACHINE ? 'block h-full' : 'hidden'}><UnitCircleMachine onAddXp={addXp} /></div>
             <div className={currentView === AppView.TRIANGLE_MACHINE ? 'block h-full' : 'hidden'}><TriangleMachine onAddXp={addXp} /></div>
+            <div className={currentView === AppView.CIRCLE_CHAPTER ? 'block h-full' : 'hidden'}><CircleChapter onAddXp={addXp} /></div>
+            <div className={currentView === AppView.TRIGONOMETRY_EXPLORER ? 'block h-full' : 'hidden'}><TrigonometryExplorer /></div>
+            <div className={currentView === AppView.SHORT_MULTIPLICATION ? 'block h-full' : 'hidden'}><ShortMultiplicationMachine /></div>
             <div className={currentView === AppView.QUOTES_GALLERY ? 'block h-full' : 'hidden'}><QuotesGallery onAddXp={addXp} /></div>
             <div className={currentView === AppView.MOBILE_CONNECT ? 'block h-full' : 'hidden'}><MobileConnect onSimulateScan={handleMobileScan} /></div>
           </div>
